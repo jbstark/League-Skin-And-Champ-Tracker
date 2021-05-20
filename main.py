@@ -1,10 +1,14 @@
 from tkinter import *
 from datetime import datetime
+from tkinter import ttk
 from Client import *
 import json
 import os.path
 
 language = "en_US"
+
+
+# TODO scale window instead of being fixed pixel counts
 
 
 class GUI:
@@ -72,6 +76,22 @@ class GUI:
                                         "Release Date", "Rarity", )
         self.unownedBox = Checkbutton(self.filterFrame, text="Show Unowned",
                                       variable=self.showUnowned, command=self.update_filter)
+        # Tab frame
+        self.tabFrame = LabelFrame(primary)
+        self.tabControl = ttk.Notebook(self.tabFrame, width=595, height=500)
+
+        self.tab1 = ttk.Frame(self.tabControl)
+        self.tab2 = ttk.Frame(self.tabControl)
+        self.tab3 = ttk.Frame(self.tabControl)
+        self.tab4 = ttk.Frame(self.tabControl)
+
+        self.tabControl.add(self.tab1, text='Champions')
+        self.tabControl.add(self.tab2, text='Skins')
+        self.tabControl.add(self.tab3, text='Current Event')
+        self.tabControl.add(self.tab4, text='Past Event')
+
+        # Create scrollbar for tabs
+        self.vScroll = Scrollbar(self.tabFrame, orient="vertical")
 
         # Grid all
         self.grid_all()
@@ -80,6 +100,7 @@ class GUI:
     def grid_all(self):
         self.grid_login()
         self.grid_filter()
+        self.grid_tab()
 
     # Adds widgets in frame login to grid
     def grid_login(self):
@@ -120,7 +141,15 @@ class GUI:
         self.secondarySort.grid(row=1, column=1, padx=5, sticky="ew")
         self.unownedBox.grid(row=2, column=0)
 
-    # Updates apiKey when update button pressed
+    def grid_tab(self):
+        self.tabFrame.grid(row=0, rowspan=20, column=1, pady=5, sticky=NSEW)
+
+        self.tabControl.grid(row=0, column=0)
+
+        ttk.Label(self.tab1, text="test").grid(column=0, row=0, sticky=NSEW)
+        self.vScroll.grid(row=0, rowspan=20, column=1)
+
+        # Updates apiKey when update button pressed
     def enter_api_key(self):
         # If field is empty don't do anything
         if self.apiKeyInput.get() == "":
@@ -159,11 +188,11 @@ class GUI:
     # Save the jsonData to the file
     def save_data(self):
         # Format python to json
-        self.toFile = json.dumps(self.jsonData)
+        tofile = json.dumps(self.jsonData)
 
         # Save json in file userOptions.json
         with open('userOptions.json', 'w') as f:
-            f.write(self.toFile)
+            f.write(tofile)
 
     # TODO
     def refresh_data(self):
