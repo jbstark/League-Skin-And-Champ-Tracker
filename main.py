@@ -2,6 +2,7 @@ from tkinter import *
 from datetime import datetime
 from Client import *
 import json
+import os.path
 
 language = "en_US"
 
@@ -11,6 +12,12 @@ class GUI:
     # Default constructor
     def __init__(self, primary):
         self.primary = primary
+
+        # if file does not exist create it
+        if not os.path.isfile('userOptions.json'):
+            with open('userOptions.json', 'w+') as f:
+                f.write("""{"apiKey": "", "summonerName": "", "lastRefresh": ""}""")
+            quit()
 
         # Open json File and store as jsonData
         with open('userOptions.json', 'r') as f:
@@ -187,6 +194,7 @@ root.mainloop()
 
 
 # Client API Test
+# TODO change file location to user input
 """
 fileLocation = "C:\Program Files (x86)\Riot Games\League of Legends\lockfile"
 client = Client(fileLocation)
