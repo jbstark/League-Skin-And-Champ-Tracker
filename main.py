@@ -1,5 +1,6 @@
 from tkinter import *
 from datetime import datetime
+from Client import *
 import json
 
 language = "en_US"
@@ -183,3 +184,11 @@ root.geometry("960x540")
 
 info = GUI(root)
 root.mainloop()
+
+
+# Client API Test
+"""
+fileLocation = "C:\Program Files (x86)\Riot Games\League of Legends\lockfile"
+client = Client(fileLocation)
+client.get_owned_champions()
+"""
