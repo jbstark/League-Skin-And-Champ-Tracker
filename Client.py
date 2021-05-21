@@ -5,6 +5,7 @@ import psutil
 import sqlite3
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 
+
 # TODO Replace if not self.clientRunning:
 
 class Client:
@@ -30,7 +31,8 @@ class Client:
         # Creates connection to champions.db
         self.con = sqlite3.connect("champions.db")
         with self.con:
-            self.con.execute("CREATE TABLE if not exists Champions (name TEXT UNIQUE, owned INTEGER, cost INTEGER)")
+            self.con.execute("CREATE TABLE if not exists Champions (name TEXT UNIQUE, owned INTEGER, cost INTEGER," +
+                             " champShards int, championMastery int, masteryTokens int)")
 
         self.check_client_running()
 
@@ -45,12 +47,12 @@ class Client:
         :return:
         """
         # See if league client process is running
-        for proc in psutil.process_iter():
+        for process in psutil.process_iter():
             try:
                 # Check if process name contains the given name string.
-                if proc.name().lower() in self.clientNames:
+                if process.name().lower() in self.clientNames:
                     self.clientRunning = True
-                    self.possibleDirectories.add(proc.cwd())
+                    self.possibleDirectories.add(process.cwd())
             except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
                 pass
         # If league isn't running quit
@@ -104,6 +106,7 @@ class Client:
         request = self.url + '/lol-summoner/v1/current-summoner'
         response = requests.get(request, verify=False, headers=self.header)
         self.summonerId = json.loads(response.text)["summonerId"]
+        print(self.summonerId)
 
     def update(self):
         """
@@ -111,9 +114,9 @@ class Client:
         :return:
         """
         # Refresh which champions are owned
-        self.get_all_champions()
+        self.update_all_champions()
 
-    def get_all_champions(self):
+    def update_all_champions(self):
         """
         Gets champion information form LCU
         :return:
@@ -127,7 +130,10 @@ class Client:
         request = self.url + '/lol-champions/v1/inventories/' + summoner_id_string + '/champions-minimal'
 
         # Get Blue Essence Costs
-        prices = dict(self.update_champion_costs())
+        prices = self.update_champion_costs()
+
+        # Get champ Shards
+        champ_shards, mastery_tokens = self.update_loot()
 
         # Make request
         response = requests.get(request, verify=False, headers=self.header)
@@ -137,11 +143,32 @@ class Client:
             if champion['name'] != "None":
                 champion_name = champion['name']
                 owned = str(int(champion["ownership"]["owned"]))
+
                 # Get Cost
                 cost = prices[champion_name]
+                num_shards = champ_shards[champion_name]
+                num_tokens = mastery_tokens[champion_name]
+
                 with self.con:
-                    self.con.execute("INSERT OR REPLACE INTO Champions VALUES (\""
-                                     + champion_name + '\", ' + owned + ', ' + cost + ')')
+                    # name TEXT, owned INTEGER, cost INTEGER, champShards int, championMastery int, masteryTokens int
+                    self.con.execute(f'INSERT OR REPLACE INTO Champions VALUES ("{champion_name}", {owned}, {cost}' +
+                                     f', {num_shards}, 0, {num_tokens})')
+                    # champShards int, championMastery int, masteryTokens int)
+
+    def get_all_champs(self):
+        """
+        get_all_champs returns a list of ALL champions in the game
+
+        :return: Returns a list
+        """
+
+        # Return error if lockfile never opened
+        if not self.clientRunning:
+            return "Client not connected. Please refresh"
+
+        with self.con:
+            owned = self.con.execute("SELECT name FROM Champions")
+        return [champion[0] for champion in owned.fetchall()]
 
     # Get all champs if owned or unowned. owned_status is true or false
     def get_champs(self, owned_status):
@@ -185,22 +212,57 @@ class Client:
             num_owned = self.con.execute("SELECT COUNT(*) FROM Champions WHERE owned = " + owned)
         return num_owned.fetchall()[0][0]
 
+    def update_loot(self):
+        """
+        Gets loot from league client and then updates the table
+        :return: two lists of tuples (champion, #shards), First return is champ_shards second is mastery_tokens
+        """
+        if not self.clientRunning:
+            return "Client not connected. Please refresh"
+
+        request = self.url + '/lol-loot/v1/player-loot'
+        response = requests.get(request, verify=False, headers=self.header)
+        response_json = json.loads(response.text)
+
+        all_champs = self.get_all_champs()
+        shards = {champ: 0 for champ in all_champs}
+        token = shards.copy()
+
+        for item in response_json:
+            # Champion Shards
+            if item["displayCategories"] != "CHEST":
+                pass
+            # TODO ADD CORRECT CHECK WHEN SOMEONE GETS IT TO ME
+            # Mastery Tokens
+            elif item["displayCategories"] == "CHEST" and item["type"] == "CHAMPION_TOKEN":
+                name = item["itemDesc"]
+                num_owned = item["count"]
+                token[name] = num_owned
+        return shards, token
+
     def update_champion_costs(self):
-        # TODO Remove Hardcoding or locatization
+        """
+        Updates the cost of champions in the champions.db table. Used for change in price or new champions
+        :return: a dictionary of champion names and their cost
+        """
+        # TODO Remove hardcoding in locatization
         if not self.clientRunning:
             return "Client not connected. Please refresh"
 
         localization = "en_US"
         request = self.url + '/lol-store/v1/catalog?inventoryType=%5B%22CHAMPION%22%5D'
-        all_champs = []
+        all_champs = self.get_all_champs()
+        champion_costs = {champ: 0 for champ in all_champs}
+
         # Make request
         response = requests.get(request, verify=False, headers=self.header)
         response_json = json.loads(response.text)
         for champion in response_json:
             name = champion["localizations"][localization]["name"]
             ip_cost = str(champion["prices"][0]["cost"])
-            all_champs.append(tuple([name, ip_cost]))
-        return all_champs
+            champion_costs[name] = ip_cost
+
+        return champion_costs
 
     def print_all_data(self):
         """
@@ -215,23 +277,31 @@ class Client:
         all_data = self.con.execute("SELECT * FROM Champions")
         print(all_data.fetchall())
 
-    def ip_needed(self, discounted):
+    def get_ip_needed(self, type):
         """
         Computes the IP/BE needed to buy all champions left
-        :param discounted: Boolean whether to give price with shards (best case) or without (worst case)
+        :param type: max, min or best. Determines which IP value to get
+        max is the total cost for all unowned champions without shards
+        min is the total cost for all unowned champions with shards
+        Default/current is the total cost for all unowned champions given current shards in loot
         :return:
         """
-
         if not self.clientRunning:
             return "Client not connected. Please refresh"
 
-        champs = self.con.execute("SELECT * FROM Champions")
-        # Default weighting is 0, if discounted its 70%
-        weighting = 1
-        if(discounted):
+        # Default weighting is 0, if discounted it is 60%
+        if type == "max":
+            weighting = 1
+        elif type == "min":
             weighting = .60
-        return int(sum(champion[2] for champion in champs if champion[1] == 0) * weighting)
+        else:
+            weighting = -1
 
+        champs = self.con.execute("SELECT * FROM Champions WHERE owned = 0")
+        if weighting != -1:
+            return int(sum(champion[2] for champion in champs) * weighting)
+        else:
+            return int(sum(champion[2] * weighting if champion[3] >= 1 else champion[2] for champion in champs))
 
 
 def sort_champs(champ):
