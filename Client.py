@@ -19,6 +19,7 @@ class Client:
 
         # Variables for clientRunning
         self.clientRunning = False
+        # TODO add process name for mac (linux?)
         self.clientNames = ["leagueclientuxrender.exe"]
         self.possibleDirectories = set()
 
@@ -277,10 +278,10 @@ class Client:
         all_data = self.con.execute("SELECT * FROM Champions")
         print(all_data.fetchall())
 
-    def get_ip_needed(self, type, subtract_owned):
+    def get_ip_needed(self, version, subtract_owned):
         """
         Computes the IP/BE needed to buy all champions left
-        :param type: max, min or best. Determines which IP value to get
+        :param version: max, min or best. Determines which IP value to get
         max is the total cost for all unowned champions without shards
         min is the total cost for all unowned champions with shards
         Default/current is the total cost for all unowned champions given current shards in loot
@@ -291,9 +292,9 @@ class Client:
             return "Client not connected. Please refresh"
 
         # Default weighting is 0, if discounted it is 60%
-        if type == "max":
+        if version == "max":
             weighting = 1
-        elif type == "min":
+        elif version == "min":
             weighting = .60
         else:
             weighting = -1
@@ -302,6 +303,7 @@ class Client:
         if weighting != -1:
             cost = int(sum(champion[2] for champion in champs) * weighting)
         else:
+            weighting = .6
             cost = int(sum(champion[2] * weighting if champion[3] >= 1 else champion[2] for champion in champs))
 
         if not subtract_owned:
@@ -313,6 +315,7 @@ class Client:
 
         current_ip = response_json["ip"]
         return cost - current_ip
+
 
 def sort_champs(champ):
     """
