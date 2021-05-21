@@ -246,7 +246,7 @@ class Client:
         Updates the cost of champions in the champions.db table. Used for change in price or new champions
         :return: a dictionary of champion names and their cost
         """
-        # TODO Remove hardcoding in locatization
+        # TODO Remove hard coding in localization
         if not self.clientRunning:
             return "Client not connected. Please refresh"
 
@@ -285,7 +285,7 @@ class Client:
         max is the total cost for all unowned champions without shards
         min is the total cost for all unowned champions with shards
         Default/current is the total cost for all unowned champions given current shards in loot
-        :param subtract_owned: wether to subtract the current amount of IP in the account
+        :param subtract_owned: Whether to subtract the current amount of IP in the account
         :return:
         """
         if not self.clientRunning:
