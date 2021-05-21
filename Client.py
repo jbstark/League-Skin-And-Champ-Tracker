@@ -10,76 +10,99 @@ class Client:
 
     def __init__(self):
         """
-        Constructor for Client Class
-        Checks if client is running, and if so will open the lockfile
-        Used to interface with the League Client (LCU)
-        Sets up data to make requests later
+        Creates variables for find the client and lockfile. Then runs find client
         """
         # Disable InsecureRequestWarning as the connection to the client cannot be secure
         requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
-        # See if client is running
+        # Variables for clientRunning
         self.clientRunning = False
         self.clientNames = ["leagueclientuxrender.exe"]
         self.possibleDirectories = set()
 
+        # Variables needed for lockfile
+        self.url = None
+        self.header = None
+        self.summonerId = None
+        self.lockfileFound = False
+
+        # Creates connection to champions.db
+        self.con = sqlite3.connect("champions.db")
+        with self.con:
+            self.con.execute("CREATE TABLE if not exists Champions (name TEXT UNIQUE, owned INTEGER, cost INTEGER)")
+
+        self.check_client_running()
+
+        # TODO Update if patch of client doesnt match patch of app
+
+    def check_client_running(self):
+        """
+        Checks to see if the client is running.
+        If it is possibleDirectories is updated with the directory, and find_lockfile is run
+        This should be where lockfile is
+        If not, self.clientRunning will be false, and other functions will not run
+        :return:
+        """
         # See if league client process is running
-        for self.proc in psutil.process_iter():
+        for proc in psutil.process_iter():
             try:
                 # Check if process name contains the given name string.
-                if self.proc.name().lower() in self.clientNames:
+                if proc.name().lower() in self.clientNames:
                     self.clientRunning = True
-                    self.possibleDirectories.add(self.proc.cwd())
+                    self.possibleDirectories.add(proc.cwd())
             except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
                 pass
         # If league isn't running quit
         if not self.clientRunning:
-            # TODO instead of quitting allow for refresh
-            print("Please open the client and reopen this app")
-            exit()
+            print("Please refresh while the league of legends client is open")
+
+        # If the client was found find the lockfile
+        if self.clientRunning:
+            self.find_lockfile()
+
+    def find_lockfile(self):
+        """
+        Finds the lockfile as long as lockfile is in a folder in possibleDirectories
+        :return:
+        """
+
+        # Return error if lockfile never opened
+        if not self.clientRunning:
+            return "Client not connected. Please refresh"
 
         # Find the lockfile
-        self.lockfileFound = False
         for path in self.possibleDirectories:
-            self.lockfile = path + "\lockfile"
+            lockfile = path + r"\lockfile"
             # Try opening the lockfile
             try:
-                with open(self.lockfile, 'r') as f:
+                with open(lockfile, 'r') as f:
                     file_contents = f.read().split(":")
                 self.lockfileFound = True
             # League client is still opening, FAIL
             except FileNotFoundError:
                 pass
-
-        # TODO Remove this when lockfile can be refreshed
         if self.lockfileFound is False:
-            print("Lockfile not found")
+            print("Lockfile not found, Coding Error. Exiting")
             exit()
 
         # Get the port and password form the lockfile
-        self.port = file_contents[2]
-        self.password = file_contents[3]
+        port = file_contents[2]
+        password = file_contents[3]
 
         # Get client API url
-        self.url = 'https://127.0.0.1:' + self.port
+        self.url = 'https://127.0.0.1:' + port
 
         # Get client Authorization For Request
-        self.authorization = "riot:" + self.password
-        self.authorization_b64 = base64.b64encode(self.authorization.encode()).decode()
+        authorization = "riot:" + password
+        authorization_b64 = base64.b64encode(authorization.encode()).decode()
 
         # Header for request
-        self.header = {"Accept": "application/json", "Authorization": "Basic " + self.authorization_b64}
+        self.header = {"Accept": "application/json", "Authorization": "Basic " + authorization_b64}
 
-        # Get summonerID
+        # Get summonerID of logged in user
         request = self.url + '/lol-summoner/v1/current-summoner'
         response = requests.get(request, verify=False, headers=self.header)
         self.summonerId = json.loads(response.text)["summonerId"]
-
-        self.con = sqlite3.connect("champions.db")
-        with self.con:
-            self.con.execute("CREATE TABLE if not exists Champions (name TEXT UNIQUE, owned INTEGER, cost INTEGER)")
-
-        # TODO Update if patch of client doesnt match patch of app
 
     def update(self):
         """
@@ -90,6 +113,14 @@ class Client:
         self.get_all_champions()
 
     def get_all_champions(self):
+        """
+        Gets champion information form LCU
+        :return:
+        """
+        # Return error if lockfile never opened
+        if not self.clientRunning:
+            return "Client not connected. Please refresh"
+
         # Construct URL
         summoner_id_string = str(self.summonerId)
         request = self.url + '/lol-champions/v1/inventories/' + summoner_id_string + '/champions-minimal'
@@ -116,6 +147,10 @@ class Client:
         :return: Returns a list of owned or unowned champions
         """
 
+        # Return error if lockfile never opened
+        if not self.clientRunning:
+            return "Client not connected. Please refresh"
+
         if owned_status is True:
             owned = "1"
         else:
@@ -133,6 +168,10 @@ class Client:
         :return: Returns an int
         """
 
+        # Return error if lockfile never opened
+        if not self.clientRunning:
+            return "Client not connected. Please refresh"
+
         if owned_status is True:
             owned = "1"
         else:
@@ -147,6 +186,10 @@ class Client:
 
         :return:
         """
+        # Return error if lockfile never opened
+        if not self.clientRunning:
+            return "Client not connected. Please refresh"
+
         all_data = self.con.execute("SELECT * FROM Champions")
         print(all_data.fetchall())
 
