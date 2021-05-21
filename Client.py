@@ -5,6 +5,7 @@ import psutil
 import sqlite3
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 
+# TODO Replace if not self.clientRunning:
 
 class Client:
 
@@ -125,6 +126,9 @@ class Client:
         summoner_id_string = str(self.summonerId)
         request = self.url + '/lol-champions/v1/inventories/' + summoner_id_string + '/champions-minimal'
 
+        # Get Blue Essence Costs
+        prices = dict(self.update_champion_costs())
+
         # Make request
         response = requests.get(request, verify=False, headers=self.header)
         response_json = json.loads(response.text)
@@ -133,7 +137,8 @@ class Client:
             if champion['name'] != "None":
                 champion_name = champion['name']
                 owned = str(int(champion["ownership"]["owned"]))
-                cost = "0"
+                # Get Cost
+                cost = prices[champion_name]
                 with self.con:
                     self.con.execute("INSERT OR REPLACE INTO Champions VALUES (\""
                                      + champion_name + '\", ' + owned + ', ' + cost + ')')
@@ -180,6 +185,23 @@ class Client:
             num_owned = self.con.execute("SELECT COUNT(*) FROM Champions WHERE owned = " + owned)
         return num_owned.fetchall()[0][0]
 
+    def update_champion_costs(self):
+        # TODO Remove Hardcoding or locatization
+        if not self.clientRunning:
+            return "Client not connected. Please refresh"
+
+        localization = "en_US"
+        request = self.url + '/lol-store/v1/catalog?inventoryType=%5B%22CHAMPION%22%5D'
+        all_champs = []
+        # Make request
+        response = requests.get(request, verify=False, headers=self.header)
+        response_json = json.loads(response.text)
+        for champion in response_json:
+            name = champion["localizations"][localization]["name"]
+            ip_cost = str(champion["prices"][0]["cost"])
+            all_champs.append(tuple([name, ip_cost]))
+        return all_champs
+
     def print_all_data(self):
         """
         print_all_data prints the Champions table in champions.db
@@ -192,6 +214,24 @@ class Client:
 
         all_data = self.con.execute("SELECT * FROM Champions")
         print(all_data.fetchall())
+
+    def ip_needed(self, discounted):
+        """
+        Computes the IP/BE needed to buy all champions left
+        :param discounted: Boolean whether to give price with shards (best case) or without (worst case)
+        :return:
+        """
+
+        if not self.clientRunning:
+            return "Client not connected. Please refresh"
+
+        champs = self.con.execute("SELECT * FROM Champions")
+        # Default weighting is 0, if discounted its 70%
+        weighting = 1
+        if(discounted):
+            weighting = .60
+        return int(sum(champion[2] for champion in champs if champion[1] == 0) * weighting)
+
 
 
 def sort_champs(champ):
