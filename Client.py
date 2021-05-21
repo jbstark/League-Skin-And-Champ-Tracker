@@ -250,11 +250,11 @@ class Client:
             return "Client not connected. Please refresh"
 
         localization = "en_US"
-        request = self.url + '/lol-store/v1/catalog?inventoryType=%5B%22CHAMPION%22%5D'
         all_champs = self.get_all_champs()
         champion_costs = {champ: 0 for champ in all_champs}
 
         # Make request
+        request = self.url + '/lol-store/v1/catalog?inventoryType=%5B%22CHAMPION%22%5D'
         response = requests.get(request, verify=False, headers=self.header)
         response_json = json.loads(response.text)
         for champion in response_json:
@@ -277,13 +277,14 @@ class Client:
         all_data = self.con.execute("SELECT * FROM Champions")
         print(all_data.fetchall())
 
-    def get_ip_needed(self, type):
+    def get_ip_needed(self, type, subtract_owned):
         """
         Computes the IP/BE needed to buy all champions left
         :param type: max, min or best. Determines which IP value to get
         max is the total cost for all unowned champions without shards
         min is the total cost for all unowned champions with shards
         Default/current is the total cost for all unowned champions given current shards in loot
+        :param subtract_owned: wether to subtract the current amount of IP in the account
         :return:
         """
         if not self.clientRunning:
@@ -299,10 +300,19 @@ class Client:
 
         champs = self.con.execute("SELECT * FROM Champions WHERE owned = 0")
         if weighting != -1:
-            return int(sum(champion[2] for champion in champs) * weighting)
+            cost = int(sum(champion[2] for champion in champs) * weighting)
         else:
-            return int(sum(champion[2] * weighting if champion[3] >= 1 else champion[2] for champion in champs))
+            cost = int(sum(champion[2] * weighting if champion[3] >= 1 else champion[2] for champion in champs))
 
+        if not subtract_owned:
+            return cost
+
+        request = self.url + "/lol-store/v1/wallet"
+        response = requests.get(request, verify=False, headers=self.header)
+        response_json = json.loads(response.text)
+
+        current_ip = response_json["ip"]
+        return cost - current_ip
 
 def sort_champs(champ):
     """
