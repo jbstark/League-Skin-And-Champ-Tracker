@@ -60,6 +60,7 @@ class Client:
         if not self.clientRunning:
             print("Please refresh while the league of legends client is open")
 
+
         # If the client was found find the lockfile
         if self.clientRunning:
             self.find_lockfile()
@@ -108,6 +109,7 @@ class Client:
         response = requests.get(request, verify=False, headers=self.header)
         self.summonerId = json.loads(response.text)["summonerId"]
         print(self.summonerId)
+        self.update_all_champions()
 
     def update(self):
         """
@@ -169,7 +171,19 @@ class Client:
 
         with self.con:
             owned = self.con.execute("SELECT name FROM Champions")
-        return [champion[0] for champion in owned.fetchall()]
+
+        fetch = owned.fetchall()
+
+        if not fetch:
+            summoner_id_string = str(self.summonerId)
+            request = self.url + '/lol-champions/v1/inventories/' + summoner_id_string + '/champions-minimal'
+
+            response = requests.get(request, verify=False, headers=self.header)
+            response_json = json.loads(response.text)
+            response_json.sort(key=sort_champs)
+            return(champion['name'] for champion in response_json)
+
+        return [champion[0] for champion in fetch]
 
     # Get all champs if owned or unowned. owned_status is true or false
     def get_champs(self, owned_status):
@@ -231,12 +245,10 @@ class Client:
 
         for item in response_json:
             # Champion Shards
-            if item["displayCategories"] != "CHAMPION":
+            if item["displayCategories"] == "CHAMPION":
                 name = item["itemDesc"]
                 num_owned = item["count"]
                 shards[name] = num_owned
-                pass
-            # TODO ADD CORRECT CHECK WHEN SOMEONE GETS IT TO ME
             # Mastery Tokens
             elif item["displayCategories"] == "CHEST" and item["type"] == "CHAMPION_TOKEN":
                 name = item["itemDesc"]
