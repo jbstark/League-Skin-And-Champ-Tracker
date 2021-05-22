@@ -231,7 +231,10 @@ class Client:
 
         for item in response_json:
             # Champion Shards
-            if item["displayCategories"] != "CHEST":
+            if item["displayCategories"] != "CHAMPION":
+                name = item["itemDesc"]
+                num_owned = item["count"]
+                shards[name] = num_owned
                 pass
             # TODO ADD CORRECT CHECK WHEN SOMEONE GETS IT TO ME
             # Mastery Tokens
