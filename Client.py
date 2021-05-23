@@ -1,6 +1,7 @@
 import base64
 import json
 import sqlite3
+import os
 from datetime import datetime
 import psutil
 import requests
@@ -8,8 +9,6 @@ from requests.packages.urllib3.exceptions import InsecureRequestWarning
 
 TIME_FORMAT = '%Y-%m-%d %H:%M:%S'
 
-
-# TODO Replace if not self.clientRunning with call_api
 
 class Client:
 
@@ -91,7 +90,10 @@ class Client:
 
         # Find the lockfile
         for path in self.possibleDirectories:
-            lockfile = path + r"\lockfile"
+            if os.name == "nt":
+                lockfile = path + r"\lockfile"
+            elif os.name == "posix":
+                lockfile = path + r"/lockfile"
             # Try opening the lockfile
             try:
                 with open(lockfile, 'r') as f:
