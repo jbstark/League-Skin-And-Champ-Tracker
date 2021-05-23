@@ -22,7 +22,7 @@ class Client:
         # Variables for clientRunning
         self.clientRunning = False
         # TODO add process name for mac (linux?)
-        self.clientNames = ["leagueclientuxrender.exe"]
+        self.clientNames = ["leagueclientuxrender.exe","leagueclientux"]
         self.possibleDirectories = set()
 
         # Variables needed for lockfile
