@@ -6,7 +6,7 @@ import sqlite3
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 
 
-# TODO Replace if not self.clientRunning:
+# TODO Replace if not self.clientRunning with call_api
 
 class Client:
 
@@ -93,6 +93,17 @@ class Client:
         port = file_contents[2]
         password = file_contents[3]
 
+        self.setup_api(port, password)
+
+        self.update_all_champions()
+
+    def setup_api(self, port, password):
+        """
+        Sets up the data needed to call the API later.
+        :param port: The port which the riot games client is running on
+        :param password: The password in the lockfile
+        :return: none
+        """
         # Get client API url
         self.url = 'https://127.0.0.1:' + port
 
@@ -104,11 +115,19 @@ class Client:
         self.header = {"Accept": "application/json", "Authorization": "Basic " + authorization_b64}
 
         # Get summonerID of logged in user
-        request = self.url + '/lol-summoner/v1/current-summoner'
+        self.summonerId = self.call_api('/lol-summoner/v1/current-summoner')["summonerId"]
+
+    def call_api(self, address):
+        """
+        Calls the API
+        :param address: The request to make to the API
+        :return: the json of the response
+        """
+        if self.clientRunning is False:
+            return None
+        request = self.url + address
         response = requests.get(request, verify=False, headers=self.header)
-        self.summonerId = json.loads(response.text)["summonerId"]
-        print(self.summonerId)
-        self.update_all_champions()
+        return json.loads(response.text)
 
     def update(self):
         """
@@ -123,12 +142,15 @@ class Client:
         Gets champion information form LCU
         :return:
         """
-        # Return error if lockfile never opened
-        if not self.clientRunning:
+
+        # Make request for all champion data
+        response_json = self.call_api(f'/lol-champions/v1/inventories/{self.summonerId}/champions-minimal')
+
+        # if the API call fails
+        if response_json is None:
             return "Client not connected. Please refresh"
 
-        # Construct URL
-        request = self.url + '/lol-champions/v1/inventories/' + str(self.summonerId) + '/champions-minimal'
+        response_json.sort(key=sort_champs)
 
         # Get Blue Essence Costs
         prices = self.update_champion_costs()
@@ -139,10 +161,6 @@ class Client:
         # Get Champion Master
         mastery = self.update_mastery()
 
-        # Make request
-        response = requests.get(request, verify=False, headers=self.header)
-        response_json = json.loads(response.text)
-        response_json.sort(key=sort_champs)
         for champion in response_json:
             if champion['name'] != "None":
                 champion_name = champion['name']
@@ -175,21 +193,18 @@ class Client:
         :return: Returns a list
         """
 
-        # Return error if lockfile never opened
-        if not self.clientRunning:
-            return "Client not connected. Please refresh"
-
         with self.con:
             owned = self.con.execute("SELECT name FROM Champions")
 
         fetch = owned.fetchall()
 
         if not fetch:
-            summoner_id_string = str(self.summonerId)
-            request = self.url + '/lol-champions/v1/inventories/' + summoner_id_string + '/champions-minimal'
+            response_json = self.call_api(f'/lol-champions/v1/inventories/{self.summonerId}/champions-minimal')
 
-            response = requests.get(request, verify=False, headers=self.header)
-            response_json = json.loads(response.text)
+            # if the API call fails
+            if response_json is None:
+                return "Client not connected. Please refresh"
+
             response_json.sort(key=sort_champs)
             return(champion['name'] for champion in response_json)
 
@@ -204,17 +219,18 @@ class Client:
         :return: Returns a list of owned or unowned champions
         """
 
-        # Return error if lockfile never opened
-        if not self.clientRunning:
-            return "Client not connected. Please refresh"
-
         if owned_status is True:
             owned = "1"
         else:
             owned = "0"
         with self.con:
-            owned = self.con.execute("SELECT name FROM Champions WHERE owned = " + owned)
-        return [champion[0] for champion in owned.fetchall()]
+            result = self.con.execute("SELECT name FROM Champions WHERE owned = " + owned)
+
+        # ALl champs unowned or owned
+        if result is None:
+            return None
+
+        return [champion[0] for champion in result.fetchall()]
 
     # Get number of champs if owned or unowned. owned_status is true or false
     def get_num_champs(self, owned_status):
@@ -225,29 +241,27 @@ class Client:
         :return: Returns an int
         """
 
-        # Return error if lockfile never opened
-        if not self.clientRunning:
-            return "Client not connected. Please refresh"
-
         if owned_status is True:
             owned = "1"
         else:
             owned = "0"
         with self.con:
-            num_owned = self.con.execute("SELECT COUNT(*) FROM Champions WHERE owned = " + owned)
-        return num_owned.fetchall()[0][0]
+            result = self.con.execute("SELECT COUNT(*) FROM Champions WHERE owned = " + owned)
+
+        return result.fetchall()[0][0]
 
     def update_loot(self):
         """
         Gets loot from league client and then updates the table
         :return: two lists of tuples (champion, #shards), First return is champ_shards second is mastery_tokens
         """
-        if not self.clientRunning:
-            return "Client not connected. Please refresh"
 
-        request = self.url + '/lol-loot/v1/player-loot'
-        response = requests.get(request, verify=False, headers=self.header)
-        response_json = json.loads(response.text)
+        # Call the API
+        response_json = self.call_api('/lol-loot/v1/player-loot')
+
+        # if the API call fails
+        if response_json is None:
+            return "Client not connected. Please refresh"
 
         all_champs = self.get_all_champs()
         shards = {champ: 0 for champ in all_champs}
@@ -271,18 +285,19 @@ class Client:
         Updates the cost of champions in the champions.db table. Used for change in price or new champions
         :return: a dictionary of champion names and their cost
         """
-        # TODO Remove hard coding in localization
-        if not self.clientRunning:
+
+        # Make request
+        response_json = self.call_api('/lol-store/v1/catalog?inventoryType=%5B%22CHAMPION%22%5D')
+
+        # if the API call fails
+        if response_json is None:
             return "Client not connected. Please refresh"
 
+        # TODO Remove hard coding in localization
         localization = "en_US"
         all_champs = self.get_all_champs()
         champion_costs = {champ: 0 for champ in all_champs}
 
-        # Make request
-        request = self.url + '/lol-store/v1/catalog?inventoryType=%5B%22CHAMPION%22%5D'
-        response = requests.get(request, verify=False, headers=self.header)
-        response_json = json.loads(response.text)
         for champion in response_json:
             name = champion["localizations"][localization]["name"]
             ip_cost = str(champion["prices"][0]["cost"])
@@ -296,15 +311,15 @@ class Client:
         :return: a dict of championID and mastery levels. Use try except to set champs not here to 0
         """
 
-        if not self.clientRunning:
+        # Make request
+        response_json = self.call_api(f'/lol-collections/v1/inventories/{self.summonerId}/champion-mastery')
+
+        # if the API call fails
+        if response_json is None:
             return "Client not connected. Please refresh"
 
         all_champs = dict()
 
-        # Make request
-        request = self.url + f'/lol-collections/v1/inventories/{self.summonerId}/champion-mastery'
-        response = requests.get(request, verify=False, headers=self.header)
-        response_json = json.loads(response.text)
         # Create Dictionary
         for champion in response_json:
             all_champs[champion['championId']] = champion['championLevel']
@@ -333,18 +348,16 @@ class Client:
         :param subtract_owned: Whether to subtract the current amount of IP in the account
         :return:
         """
-        if not self.clientRunning:
-            return "Client not connected. Please refresh"
 
         # Default current_ip is 0 unless requested to use
         current_ip = 0
 
         # If the program should subtract IP in the account, get the current_ip
         if subtract_owned:
-            request = self.url + "/lol-store/v1/wallet"
-            response = requests.get(request, verify=False, headers=self.header)
-            response_json = json.loads(response.text)
-
+            response_json = self.call_api("/lol-store/v1/wallet")
+            # if the API call fails
+            if response_json is None:
+                return "Client not connected. Please refresh"
             current_ip = response_json["ip"]
 
         # Get the maximum cost of all unowned champions
