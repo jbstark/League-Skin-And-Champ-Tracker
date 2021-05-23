@@ -1,9 +1,9 @@
-import requests
 import base64
 import json
-import psutil
 import sqlite3
 from datetime import datetime
+import psutil
+import requests
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 
 TIME_FORMAT = '%Y-%m-%d %H:%M:%S'
