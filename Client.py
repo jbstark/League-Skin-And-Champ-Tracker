@@ -45,13 +45,14 @@ class Client:
         # TODO Update if patch of client doesnt match patch of app
 
     def add_cols(self):
-        print("EXCEPT")
-        pass
+        # TODO fix this so that it is automatic and users can skip updates
+        """
+        If the table is updated, add column here
+        :return:
+        """
         with self.con:
-            pass
             # Champion name, Champion ID, Owned, IP cost, Num champ shards, Mastery Level, Mastery tokens, UTC date play
             self.con.execute("ALTER TABLE Champions ADD COLUMN lastPlayed TEXT")
-
 
     def check_client_running(self):
         """
