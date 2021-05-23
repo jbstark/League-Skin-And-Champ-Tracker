@@ -155,7 +155,6 @@ class Client:
                 # Get Champion Shards
                 num_shards = champ_shards[champion_name]
                 # Get mastery level
-                mastery_level = 0
                 try:
                     mastery_level = mastery[champion_id]
                 except KeyError:
@@ -293,6 +292,10 @@ class Client:
         return champion_costs
 
     def update_mastery(self):
+        """
+        Retrieves champion mastery for champions with mastery (owned)
+        :return: a dict of championID and mastery levels. Use try except to set champs not here to 0
+        """
 
         if not self.clientRunning:
             return "Client not connected. Please refresh"
@@ -304,10 +307,10 @@ class Client:
         response = requests.get(request, verify=False, headers=self.header)
         response_json = json.loads(response.text)
         # Create Dictionary
+        print(response_json)
         for champion in response_json:
             all_champs[champion['championId']] = champion['championLevel']
         return all_champs
-
 
     def print_all_data(self):
         """
