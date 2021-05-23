@@ -21,7 +21,7 @@ class Client:
 
         # Variables for clientRunning
         self.clientRunning = False
-        # TODO add process name for mac (linux?)
+        # TODO add process linux? (How does wine work)
         self.clientNames = ["leagueclientuxrender.exe", "leagueclientux"]
         self.possibleDirectories = set()
 
@@ -269,6 +269,7 @@ class Client:
         for champion in response_json:
             mastery[champion['championId']] = champion['championLevel']
             # Last date mastery points were gained on a champion
+            # TODO Convert UTC To local time?
             date[champion['championId']] = datetime.utcfromtimestamp(champion['lastPlayTime'] / 1e3)\
                 .strftime('%Y-%m-%d %H:%M:%S')
         return mastery, date
@@ -400,7 +401,7 @@ class Client:
             if version == "max":
                 # If at max cost it is negative throw exception
                 assert(maximum - current_ip > 0)
-                return maximum - current_ip
+                return int(maximum - current_ip)
             elif version == "min":
                 # If at min cost it is negative throw exception
                 assert(int((maximum * .6) - current_ip) > 0)
@@ -415,7 +416,7 @@ class Client:
 
             # If at current cost it is negative throw exception
             assert(maximum - current_discount - current_ip > 0)
-            return maximum - current_discount - current_ip
+            return int(maximum - current_discount - current_ip)
 
         except AssertionError:
             # Either no champs unowned, or user has enough IP
