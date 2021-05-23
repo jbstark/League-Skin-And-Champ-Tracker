@@ -32,8 +32,8 @@ class Client:
         # Creates connection to champions.db
         self.con = sqlite3.connect("champions.db")
         with self.con:
-            self.con.execute("CREATE TABLE if not exists Champions (name TEXT UNIQUE, owned INTEGER, cost INTEGER," +
-                             " champShards int, championMastery int, masteryTokens int)")
+            self.con.execute("CREATE TABLE if not exists Champions (name TEXT UNIQUE, championID INTEGER, " +
+                             "owned INTEGER, cost INTEGER, champShards int, championMastery int, masteryTokens int)")
 
         self.check_client_running()
 
@@ -59,7 +59,6 @@ class Client:
         # If league isn't running quit
         if not self.clientRunning:
             print("Please refresh while the league of legends client is open")
-
 
         # If the client was found find the lockfile
         if self.clientRunning:
@@ -135,8 +134,11 @@ class Client:
         # Get Blue Essence Costs
         prices = self.update_champion_costs()
 
-        # Get champ Shards
+        # Get champ Shards and Mastery Tokens
         champ_shards, mastery_tokens = self.update_loot()
+
+        # Get Champion Master
+        mastery = self.update_mastery()
 
         # Make request
         response = requests.get(request, verify=False, headers=self.header)
@@ -145,17 +147,27 @@ class Client:
         for champion in response_json:
             if champion['name'] != "None":
                 champion_name = champion['name']
+                champion_id = champion['id']
                 owned = str(int(champion["ownership"]["owned"]))
 
                 # Get Cost
                 cost = prices[champion_name]
+                # Get Champion Shards
                 num_shards = champ_shards[champion_name]
+                # Get mastery level
+                mastery_level = 0
+                try:
+                    mastery_level = mastery[champion_id]
+                except KeyError:
+                    # Champion has no mastery
+                    mastery_level = 0
+                # Get number of tokens
                 num_tokens = mastery_tokens[champion_name]
 
                 with self.con:
                     # name TEXT, owned INTEGER, cost INTEGER, champShards int, championMastery int, masteryTokens int
-                    self.con.execute(f'INSERT OR REPLACE INTO Champions VALUES ("{champion_name}", {owned}, {cost}' +
-                                     f', {num_shards}, 0, {num_tokens})')
+                    self.con.execute(f'INSERT OR REPLACE INTO Champions VALUES ("{champion_name}", {champion_id}, '
+                                     f'{owned}, {cost}, {num_shards}, {mastery_level}, {num_tokens})')
                     # champShards int, championMastery int, masteryTokens int)
 
     def get_all_champs(self):
@@ -280,6 +292,23 @@ class Client:
 
         return champion_costs
 
+    def update_mastery(self):
+
+        if not self.clientRunning:
+            return "Client not connected. Please refresh"
+
+        all_champs = dict()
+
+        # Make request
+        request = self.url + f'/lol-collections/v1/inventories/{self.summonerId}/champion-mastery'
+        response = requests.get(request, verify=False, headers=self.header)
+        response_json = json.loads(response.text)
+        # Create Dictionary
+        for champion in response_json:
+            all_champs[champion['championId']] = champion['championLevel']
+        return all_champs
+
+
     def print_all_data(self):
         """
         print_all_data prints the Champions table in champions.db
@@ -316,10 +345,10 @@ class Client:
 
         champs = self.con.execute("SELECT * FROM Champions WHERE owned = 0")
         if weighting != -1:
-            cost = int(sum(champion[2] for champion in champs) * weighting)
+            cost = int(sum(champion[3] for champion in champs) * weighting)
         else:
             weighting = .6
-            cost = int(sum(champion[2] * weighting if champion[3] >= 1 else champion[2] for champion in champs))
+            cost = int(sum(champion[3] * weighting if champion[4] >= 1 else champion[3] for champion in champs))
 
         if not subtract_owned:
             return cost
