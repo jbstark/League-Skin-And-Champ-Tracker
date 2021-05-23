@@ -186,6 +186,81 @@ class Client:
                                      f'{owned}, {cost}, {num_shards}, {mastery_level}, {num_tokens})')
                     # champShards int, championMastery int, masteryTokens int)
 
+    def update_champion_costs(self):
+        """
+        Updates the cost of champions in the champions.db table. Used for change in price or new champions
+        :return: a dictionary of champion names and their cost
+        """
+
+        # Make request
+        response_json = self.call_api('/lol-store/v1/catalog?inventoryType=%5B%22CHAMPION%22%5D')
+
+        # if the API call fails
+        if response_json is None:
+            return "Client not connected. Please refresh"
+
+        # TODO Remove hard coding in localization
+        localization = "en_US"
+        all_champs = self.get_all_champs()
+        champion_costs = {champ: 0 for champ in all_champs}
+
+        for champion in response_json:
+            name = champion["localizations"][localization]["name"]
+            ip_cost = str(champion["prices"][0]["cost"])
+            champion_costs[name] = ip_cost
+
+        return champion_costs
+
+    def update_mastery(self):
+        """
+        Retrieves champion mastery for champions with mastery (owned)
+        :return: a dict of championID and mastery levels. Use try except to set champs not here to 0
+        """
+
+        # Make request
+        response_json = self.call_api(f'/lol-collections/v1/inventories/{self.summonerId}/champion-mastery')
+
+        # if the API call fails
+        if response_json is None:
+            return "Client not connected. Please refresh"
+
+        all_champs = dict()
+
+        # Create Dictionary
+        for champion in response_json:
+            all_champs[champion['championId']] = champion['championLevel']
+        return all_champs
+
+    def update_loot(self):
+        """
+        Gets loot from league client and then updates the table
+        :return: two lists of tuples (champion, #shards), First return is champ_shards second is mastery_tokens
+        """
+
+        # Call the API
+        response_json = self.call_api('/lol-loot/v1/player-loot')
+
+        # if the API call fails
+        if response_json is None:
+            return "Client not connected. Please refresh"
+
+        all_champs = self.get_all_champs()
+        shards = {champ: 0 for champ in all_champs}
+        token = shards.copy()
+
+        for item in response_json:
+            # Champion Shards
+            if item["displayCategories"] == "CHAMPION":
+                name = item["itemDesc"]
+                num_owned = item["count"]
+                shards[name] = num_owned
+            # Mastery Tokens
+            elif item["displayCategories"] == "CHEST" and item["type"] == "CHAMPION_TOKEN":
+                name = item["itemDesc"]
+                num_owned = item["count"]
+                token[name] = num_owned
+        return shards, token
+
     def get_all_champs(self):
         """
         get_all_champs returns a list of ALL champions in the game
@@ -250,94 +325,6 @@ class Client:
 
         return result.fetchall()[0][0]
 
-    def update_loot(self):
-        """
-        Gets loot from league client and then updates the table
-        :return: two lists of tuples (champion, #shards), First return is champ_shards second is mastery_tokens
-        """
-
-        # Call the API
-        response_json = self.call_api('/lol-loot/v1/player-loot')
-
-        # if the API call fails
-        if response_json is None:
-            return "Client not connected. Please refresh"
-
-        all_champs = self.get_all_champs()
-        shards = {champ: 0 for champ in all_champs}
-        token = shards.copy()
-
-        for item in response_json:
-            # Champion Shards
-            if item["displayCategories"] == "CHAMPION":
-                name = item["itemDesc"]
-                num_owned = item["count"]
-                shards[name] = num_owned
-            # Mastery Tokens
-            elif item["displayCategories"] == "CHEST" and item["type"] == "CHAMPION_TOKEN":
-                name = item["itemDesc"]
-                num_owned = item["count"]
-                token[name] = num_owned
-        return shards, token
-
-    def update_champion_costs(self):
-        """
-        Updates the cost of champions in the champions.db table. Used for change in price or new champions
-        :return: a dictionary of champion names and their cost
-        """
-
-        # Make request
-        response_json = self.call_api('/lol-store/v1/catalog?inventoryType=%5B%22CHAMPION%22%5D')
-
-        # if the API call fails
-        if response_json is None:
-            return "Client not connected. Please refresh"
-
-        # TODO Remove hard coding in localization
-        localization = "en_US"
-        all_champs = self.get_all_champs()
-        champion_costs = {champ: 0 for champ in all_champs}
-
-        for champion in response_json:
-            name = champion["localizations"][localization]["name"]
-            ip_cost = str(champion["prices"][0]["cost"])
-            champion_costs[name] = ip_cost
-
-        return champion_costs
-
-    def update_mastery(self):
-        """
-        Retrieves champion mastery for champions with mastery (owned)
-        :return: a dict of championID and mastery levels. Use try except to set champs not here to 0
-        """
-
-        # Make request
-        response_json = self.call_api(f'/lol-collections/v1/inventories/{self.summonerId}/champion-mastery')
-
-        # if the API call fails
-        if response_json is None:
-            return "Client not connected. Please refresh"
-
-        all_champs = dict()
-
-        # Create Dictionary
-        for champion in response_json:
-            all_champs[champion['championId']] = champion['championLevel']
-        return all_champs
-
-    def print_all_data(self):
-        """
-        print_all_data prints the Champions table in champions.db
-
-        :return:
-        """
-        # Return error if lockfile never opened
-        if not self.clientRunning:
-            return "Client not connected. Please refresh"
-
-        all_data = self.con.execute("SELECT * FROM Champions")
-        print(all_data.fetchall())
-
     def get_ip_needed(self, version, subtract_owned):
         """
         Computes the IP/BE needed to buy all champions left
@@ -391,6 +378,19 @@ class Client:
         except AssertionError:
             # Either no champs unowned, or user has enough IP
             return 0
+
+    def print_all_data(self):
+        """
+        print_all_data prints the Champions table in champions.db
+
+        :return:
+        """
+        # Return error if lockfile never opened
+        if not self.clientRunning:
+            return "Client not connected. Please refresh"
+
+        all_data = self.con.execute("SELECT * FROM Champions")
+        print(all_data.fetchall())
 
 
 def sort_champs(champ):
