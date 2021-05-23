@@ -128,8 +128,7 @@ class Client:
             return "Client not connected. Please refresh"
 
         # Construct URL
-        summoner_id_string = str(self.summonerId)
-        request = self.url + '/lol-champions/v1/inventories/' + summoner_id_string + '/champions-minimal'
+        request = self.url + '/lol-champions/v1/inventories/' + str(self.summonerId) + '/champions-minimal'
 
         # Get Blue Essence Costs
         prices = self.update_champion_costs()
@@ -307,7 +306,6 @@ class Client:
         response = requests.get(request, verify=False, headers=self.header)
         response_json = json.loads(response.text)
         # Create Dictionary
-        print(response_json)
         for champion in response_json:
             all_champs[champion['championId']] = champion['championLevel']
         return all_champs
