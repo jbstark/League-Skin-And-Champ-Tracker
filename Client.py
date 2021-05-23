@@ -22,7 +22,7 @@ class Client:
         # Variables for clientRunning
         self.clientRunning = False
         # TODO add process name for mac (linux?)
-        self.clientNames = ["leagueclientuxrender.exe","leagueclientux"]
+        self.clientNames = ["leagueclientuxrender.exe", "leagueclientux"]
         self.possibleDirectories = set()
 
         # Variables needed for lockfile
@@ -97,6 +97,7 @@ class Client:
             elif os.name == "posix":
                 lockfile = path + r"/lockfile"
             else:
+                lockfile = None
                 print("Unsupported system")
                 exit()
             # Try opening the lockfile
