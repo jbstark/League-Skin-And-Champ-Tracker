@@ -336,30 +336,48 @@ class Client:
         if not self.clientRunning:
             return "Client not connected. Please refresh"
 
-        # Default weighting is 0, if discounted it is 60%
-        if version == "max":
-            weighting = 1
-        elif version == "min":
-            weighting = .60
-        else:
-            weighting = -1
+        # Default current_ip is 0 unless requested to use
+        current_ip = 0
 
-        champs = self.con.execute("SELECT * FROM Champions WHERE owned = 0")
-        if weighting != -1:
-            cost = int(sum(champion[3] for champion in champs) * weighting)
-        else:
-            weighting = .6
-            cost = int(sum(champion[3] * weighting if champion[4] >= 1 else champion[3] for champion in champs))
+        # If the program should subtract IP in the account, get the current_ip
+        if subtract_owned:
+            request = self.url + "/lol-store/v1/wallet"
+            response = requests.get(request, verify=False, headers=self.header)
+            response_json = json.loads(response.text)
 
-        if not subtract_owned:
-            return cost
+            current_ip = response_json["ip"]
 
-        request = self.url + "/lol-store/v1/wallet"
-        response = requests.get(request, verify=False, headers=self.header)
-        response_json = json.loads(response.text)
+        # Get the maximum cost of all unowned champions
+        maximum = self.con.execute("SELECT SUM (cost) FROM Champions WHERE owned = 0").fetchone()[0]
 
-        current_ip = response_json["ip"]
-        return cost - current_ip
+        # if try fails, then the cost needed to purchase all champions is 0
+        try:
+            # If all champs are owned
+            assert(maximum is not None)
+
+            if version == "max":
+                # If at max cost it is negative throw exception
+                assert(maximum - current_ip > 0)
+                return maximum - current_ip
+            elif version == "min":
+                # If at min cost it is negative throw exception
+                assert(int((maximum * .6) - current_ip) > 0)
+                return int((maximum * .6) - current_ip)
+
+            # Try to get all champions with shards. If it fails, then the discount is 0
+            try:
+                current_discount = self.con.execute("SELECT SUM (cost) FROM Champions WHERE " +
+                                                    "owned = 0 AND champShards > 0").fetchone()[0] * .4
+            except (SyntaxError, TypeError):
+                current_discount = 0
+
+            # If at current cost it is negative throw exception
+            assert(maximum - current_discount - current_ip > 0)
+            return maximum - current_discount - current_ip
+
+        except AssertionError:
+            # Either no champs unowned, or user has enough IP
+            return 0
 
 
 def sort_champs(champ):
