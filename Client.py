@@ -228,10 +228,11 @@ class Client:
         if response_json is None:
             return "Client not connected. Please refresh"
 
-        # TODO Remove hard coding in localization
-        localization = "en_US"
         all_champs = self.get_all_champs()
         champion_costs = {champ: 0 for champ in all_champs}
+
+        # Get the localization for getting champion cost
+        localization = [*response_json[0]["localizations"]][0]
 
         for champion in response_json:
             name = champion["localizations"][localization]["name"]
