@@ -44,6 +44,15 @@ class Client:
 
         # TODO Update if patch of client doesnt match patch of app
 
+    def add_cols(self):
+        print("EXCEPT")
+        pass
+        with self.con:
+            pass
+            # Champion name, Champion ID, Owned, IP cost, Num champ shards, Mastery Level, Mastery tokens, UTC date play
+            self.con.execute("ALTER TABLE Champions ADD COLUMN lastPlayed TEXT")
+
+
     def check_client_running(self):
         """
         Checks to see if the client is running.
@@ -98,11 +107,11 @@ class Client:
         port = file_contents[2]
         password = file_contents[3]
 
-        self.setup_api(port, password)
+        self.build_api(port, password)
 
         self.update_all_champions()
 
-    def setup_api(self, port, password):
+    def build_api(self, port, password):
         """
         Sets up the data needed to call the API later.
         :param port: The port which the riot games client is running on
@@ -194,11 +203,16 @@ class Client:
                 # Get number of tokens
                 num_tokens = mastery_tokens[champion_name]
 
-                with self.con:
+                try:
                     # name TEXT, owned INTEGER, cost INTEGER, champShards int, championMastery int, masteryTokens int
                     self.con.execute(f'INSERT OR REPLACE INTO Champions VALUES ("{champion_name}", {champion_id}, ' +
                                      f'{owned}, {cost}, {num_shards}, {mastery_level}, {num_tokens}, "{date}")')
                     # champShards int, championMastery int, masteryTokens int)
+                except sqlite3.OperationalError:
+                    # Old table, add column
+                    self.add_cols()
+                    self.con.execute(f'INSERT OR REPLACE INTO Champions VALUES ("{champion_name}", {champion_id}, ' +
+                                     f'{owned}, {cost}, {num_shards}, {mastery_level}, {num_tokens}, "{date}")')
 
     def update_champion_costs(self):
         """
@@ -293,7 +307,6 @@ class Client:
 
         if not fetch:
             response_json = self.call_api(f'/lol-champions/v1/inventories/{self.summonerId}/champions-minimal')
-
 
             # if the API call fails
             if response_json is None:
