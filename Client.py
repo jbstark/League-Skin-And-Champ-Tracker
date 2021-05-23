@@ -3,7 +3,10 @@ import base64
 import json
 import psutil
 import sqlite3
+from datetime import datetime
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
+
+TIME_FORMAT = '%Y-%m-%d %H:%M:%S'
 
 
 # TODO Replace if not self.clientRunning with call_api
@@ -32,8 +35,10 @@ class Client:
         # Creates connection to champions.db
         self.con = sqlite3.connect("champions.db")
         with self.con:
+            # Champion name, Champion ID, Owned, IP cost, Num champ shards, Mastery Level, Mastery tokens, UTC date play
             self.con.execute("CREATE TABLE if not exists Champions (name TEXT UNIQUE, championID INTEGER, " +
-                             "owned INTEGER, cost INTEGER, champShards int, championMastery int, masteryTokens int)")
+                             "owned INTEGER, cost INTEGER, champShards int, championMastery int, masteryTokens int, " +
+                             "lastPlayed TEXT)")
 
         self.check_client_running()
 
@@ -158,8 +163,8 @@ class Client:
         # Get champ Shards and Mastery Tokens
         champ_shards, mastery_tokens = self.update_loot()
 
-        # Get Champion Master
-        mastery = self.update_mastery()
+        # Get Champion Mastery
+        mastery, last_played = self.update_mastery_and_date()
 
         for champion in response_json:
             if champion['name'] != "None":
@@ -171,19 +176,28 @@ class Client:
                 cost = prices[champion_name]
                 # Get Champion Shards
                 num_shards = champ_shards[champion_name]
+
                 # Get mastery level
                 try:
                     mastery_level = mastery[champion_id]
                 except KeyError:
                     # Champion has no mastery
                     mastery_level = 0
+
+                # Get last played date
+                try:
+                    date = last_played[champion_id]
+                except KeyError:
+                    # Champion has no lastPlayed (Meaning no mastery)
+                    date = 0
+
                 # Get number of tokens
                 num_tokens = mastery_tokens[champion_name]
 
                 with self.con:
                     # name TEXT, owned INTEGER, cost INTEGER, champShards int, championMastery int, masteryTokens int
-                    self.con.execute(f'INSERT OR REPLACE INTO Champions VALUES ("{champion_name}", {champion_id}, '
-                                     f'{owned}, {cost}, {num_shards}, {mastery_level}, {num_tokens})')
+                    self.con.execute(f'INSERT OR REPLACE INTO Champions VALUES ("{champion_name}", {champion_id}, ' +
+                                     f'{owned}, {cost}, {num_shards}, {mastery_level}, {num_tokens}, "{date}")')
                     # champShards int, championMastery int, masteryTokens int)
 
     def update_champion_costs(self):
@@ -211,7 +225,7 @@ class Client:
 
         return champion_costs
 
-    def update_mastery(self):
+    def update_mastery_and_date(self):
         """
         Retrieves champion mastery for champions with mastery (owned)
         :return: a dict of championID and mastery levels. Use try except to set champs not here to 0
@@ -224,12 +238,16 @@ class Client:
         if response_json is None:
             return "Client not connected. Please refresh"
 
-        all_champs = dict()
+        mastery = dict()
+        date = dict()
 
         # Create Dictionary
         for champion in response_json:
-            all_champs[champion['championId']] = champion['championLevel']
-        return all_champs
+            mastery[champion['championId']] = champion['championLevel']
+            # Last date mastery points were gained on a champion
+            date[champion['championId']] = datetime.utcfromtimestamp(champion['lastPlayTime'] / 1e3)\
+                .strftime('%Y-%m-%d %H:%M:%S')
+        return mastery, date
 
     def update_loot(self):
         """
@@ -275,6 +293,7 @@ class Client:
 
         if not fetch:
             response_json = self.call_api(f'/lol-champions/v1/inventories/{self.summonerId}/champions-minimal')
+
 
             # if the API call fails
             if response_json is None:
