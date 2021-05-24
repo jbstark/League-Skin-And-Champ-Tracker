@@ -9,6 +9,8 @@ from requests.packages.urllib3.exceptions import InsecureRequestWarning
 
 TIME_FORMAT = '%Y-%m-%d %H:%M:%S'
 
+# TODO when printing date convert from UTC to local time
+
 
 class Client:
 
@@ -40,8 +42,6 @@ class Client:
                              "lastPlayed TEXT)")
 
         self.check_client_running()
-
-        # TODO Update if patch of client doesnt match patch of app
 
     def add_cols(self):
         # TODO fix this so that it is automatic and users can skip updates
@@ -110,6 +110,8 @@ class Client:
         password = file_contents[3]
 
         self.build_api(port, password)
+
+        # TODO Update if patch of client doesnt match patch of app
 
         self.update_all_champions()
 
@@ -262,7 +264,6 @@ class Client:
         for champion in response_json:
             mastery[champion['championId']] = champion['championLevel']
             # Last date mastery points were gained on a champion
-            # TODO Convert UTC To local time?
             date[champion['championId']] = datetime.utcfromtimestamp(champion['lastPlayTime'] / 1e3)\
                 .strftime('%Y-%m-%d %H:%M:%S')
         return mastery, date
