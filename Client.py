@@ -90,16 +90,9 @@ class Client:
 
         # Find the lockfile
         for path in self.possibleDirectories:
-            # Windows Machine
-            if os.name == "nt":
-                lockfile = path + r"\lockfile"
-            # Mac Machine
-            elif os.name == "posix":
-                lockfile = path + r"/lockfile"
-            else:
-                lockfile = None
-                print("Unsupported system")
-                exit()
+            # gets path for all operating systems
+            lockfile = os.path.join(path, r'lockfile')
+            
             # Try opening the lockfile
             try:
                 with open(lockfile, 'r') as f:
