@@ -11,19 +11,19 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>MainWindow</string>
+   <string>League Tracker</string>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <layout class="QGridLayout" name="gridLayout">
+   <layout class="QGridLayout" name="window_grid_layout">
     <item row="0" column="0">
-     <widget class="QFrame" name="frame">
+     <widget class="QFrame" name="main_frame">
       <property name="frameShape">
        <enum>QFrame::StyledPanel</enum>
       </property>
       <property name="frameShadow">
        <enum>QFrame::Raised</enum>
       </property>
-      <layout class="QGridLayout" name="gridLayout_2">
+      <layout class="QGridLayout" name="main_frame_grid_layout">
        <item row="0" column="0" alignment="Qt::AlignTop">
         <widget class="QWidget" name="settings_widget" native="true">
          <property name="sizePolicy">
@@ -44,10 +44,10 @@
            <height>300</height>
           </size>
          </property>
-         <layout class="QVBoxLayout" name="verticalLayout">
+         <layout class="QVBoxLayout" name="settings_vertical_layout">
           <item>
            <widget class="QWidget" name="api_username_frame" native="true">
-            <layout class="QFormLayout" name="formLayout">
+            <layout class="QFormLayout" name="api_username_form_layout">
              <item row="0" column="0">
               <widget class="QLineEdit" name="api_input">
                <property name="toolTip">
@@ -110,16 +110,6 @@
                </property>
               </widget>
              </item>
-             <item row="5" column="0">
-              <widget class="QFrame" name="frame_2">
-               <property name="frameShape">
-                <enum>QFrame::StyledPanel</enum>
-               </property>
-               <property name="frameShadow">
-                <enum>QFrame::Raised</enum>
-               </property>
-              </widget>
-             </item>
             </layout>
            </widget>
           </item>
@@ -131,16 +121,16 @@
             <property name="frameShadow">
              <enum>QFrame::Raised</enum>
             </property>
-            <layout class="QFormLayout" name="formLayout_2">
+            <layout class="QFormLayout" name="sort_form_layout">
              <item row="0" column="0">
-              <widget class="QLabel" name="label">
+              <widget class="QLabel" name="primary_sort_label">
                <property name="text">
                 <string>Primary Sort:</string>
                </property>
               </widget>
              </item>
              <item row="0" column="1">
-              <widget class="QComboBox" name="comboBox">
+              <widget class="QComboBox" name="primary_sort_dropdown">
                <property name="editable">
                 <bool>false</bool>
                </property>
@@ -175,14 +165,14 @@
               </widget>
              </item>
              <item row="1" column="0">
-              <widget class="QLabel" name="label_2">
+              <widget class="QLabel" name="secondary_sort_label">
                <property name="text">
                 <string>Secondary Sort</string>
                </property>
               </widget>
              </item>
              <item row="1" column="1">
-              <widget class="QComboBox" name="comboBox_2">
+              <widget class="QComboBox" name="secondary_sort_dropdown">
                <property name="editable">
                 <bool>false</bool>
                </property>
@@ -217,7 +207,7 @@
               </widget>
              </item>
              <item row="2" column="0">
-              <widget class="QCheckBox" name="checkBox">
+              <widget class="QCheckBox" name="show_unowned_checkbox">
                <property name="text">
                 <string>Show Unowned</string>
                </property>
@@ -288,7 +278,7 @@
      <x>0</x>
      <y>0</y>
      <width>800</width>
-     <height>27</height>
+     <height>21</height>
     </rect>
    </property>
   </widget>
