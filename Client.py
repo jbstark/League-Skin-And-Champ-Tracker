@@ -44,23 +44,28 @@ class Client:
 
         # Creates connection to champions.db
         self.con = sqlite3.connect("champions.db")
-        with self.con:
-            # Champion name, Champion ID, Owned, IP cost, Num champ shards, Mastery Level, Mastery tokens, UTC date play
-            self.con.execute("CREATE TABLE if not exists Champions (name TEXT UNIQUE, championID INTEGER, " +
-                             "owned INTEGER, cost INTEGER, champShards int, championMastery int, masteryTokens int, " +
-                             "lastPlayed TEXT)")
 
+        self.check_db()
         self.check_client_running()
 
-    def add_cols(self):
-        # TODO fix this so that it is automatic and users can skip updates
-        """
-        If the table is updated, add column here
-        :return:
-        """
+    def check_db(self):
+
+        # All columns (besides name) in the DB. Add a tuple here to add a column
+        columns = [("championID", "INTEGER"), ("owned", "INTEGER"), ("cost", "INTEGER"), ("champShards", "INTEGER"),
+                   ("championMastery", "INTEGER"), ("masteryTokens", "INTEGER"), ("lastPlayed", "TEXT")]
+
         with self.con:
-            # Champion name, Champion ID, Owned, IP cost, Num champ shards, Mastery Level, Mastery tokens, UTC date play
-            self.con.execute("ALTER TABLE Champions ADD COLUMN lastPlayed TEXT")
+            self.con.execute("CREATE TABLE if not exists Champions (name TEXT UNIQUE)")
+
+            # Check cols of DB and compare to list of all cols in current version. Add missing
+            for col in columns:
+                col_name = col[0]
+                col_type = col[1]
+                try:
+                    self.con.execute(f"ALTER TABLE Champions ADD COLUMN {col_name} {col_type}")
+                except sqlite3.OperationalError:
+                    # Column Already Exists
+                    pass
 
     def check_client_running(self):
         """
@@ -252,16 +257,10 @@ class Client:
                 # Get number of tokens
                 num_tokens = mastery_tokens[champion_name]
 
-                try:
-                    # name TEXT, owned INTEGER, cost INTEGER, champShards int, championMastery int, masteryTokens int
-                    self.con.execute(f'INSERT OR REPLACE INTO Champions VALUES ("{champion_name}", {champion_id}, ' +
-                                     f'{owned}, {cost}, {num_shards}, {mastery_level}, {num_tokens}, "{date}")')
-                    # champShards int, championMastery int, masteryTokens int)
-                except sqlite3.OperationalError:
-                    # Old table, add column
-                    self.add_cols()
-                    self.con.execute(f'INSERT OR REPLACE INTO Champions VALUES ("{champion_name}", {champion_id}, ' +
-                                     f'{owned}, {cost}, {num_shards}, {mastery_level}, {num_tokens}, "{date}")')
+                # name TEXT, owned INTEGER, cost INTEGER, champShards int, championMastery int, masteryTokens int
+                self.con.execute(f'INSERT OR REPLACE INTO Champions VALUES ("{champion_name}", {champion_id}, ' +
+                                 f'{owned}, {cost}, {num_shards}, {mastery_level}, {num_tokens}, "{date}")')
+                # champShards int, championMastery int, masteryTokens int)
 
     def update_champion_costs(self):
         """
@@ -467,10 +466,6 @@ class Client:
 
         :return:
         """
-        # Return error if lockfile never opened
-        if not self.clientRunning:
-            return "Client not connected. Please refresh"
-
         all_data = self.con.execute("SELECT * FROM Champions")
         print(all_data.fetchall())
 
