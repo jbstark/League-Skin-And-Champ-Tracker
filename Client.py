@@ -73,6 +73,7 @@ class Client:
         If it is possibleDirectories is updated with the directory, and find_lockfile is run
         This should be where lockfile is
         If not, self.clientRunning will be false, and other functions will not run
+
         :return:
         """
 
@@ -96,6 +97,7 @@ class Client:
     def find_lockfile(self):
         """
         Finds the lockfile as long as lockfile is in a folder in possibleDirectories
+
         :return:
         """
 
@@ -133,9 +135,10 @@ class Client:
     def build_api(self, port, password):
         """
         Sets up the data needed to call the API later.
+
         :param port: The port which the riot games client is running on
         :param password: The password in the lockfile
-        :return: none
+        :return:
         """
         # Get client API url
         self.url = 'https://127.0.0.1:' + port
@@ -187,6 +190,7 @@ class Client:
     def call_api(self, address):
         """
         Calls the API
+
         :param address: The request to make to the API
         :return: the json of the response
         """
@@ -200,6 +204,7 @@ class Client:
     def update(self):
         """
         Updates the information from the client. Used for changes in status (champions, skins, etc.)
+
         :return:
         """
         # Refresh which champions are owned
@@ -208,6 +213,8 @@ class Client:
     def update_all_champions(self):
         """
         Gets champion information form LCU
+        Calls update_champion_costs(), update_mastery_and_date(), update_loot()
+
         :return:
         """
 
@@ -243,8 +250,9 @@ class Client:
 
     def update_champion_costs(self):
         """
-        Updates the cost of champions in the champions.db table. Used for change in price or new champions
-        :return: a dictionary of champion names and their cost
+        Updates the cost of champions in the champions.db table.
+
+        :return:
         """
 
         # Make request
@@ -265,8 +273,9 @@ class Client:
 
     def update_mastery_and_date(self):
         """
-        Retrieves champion mastery for champions with mastery (owned)
-        :return: a dict of championID and mastery levels. Use try except to set champs not here to 0
+        Updates champion mastery and date last played in champions.db
+
+        :return:
         """
 
         # Make request
@@ -286,8 +295,9 @@ class Client:
 
     def update_loot(self):
         """
-        Gets loot from league client and then updates the table
-        :return: two lists of tuples (champion, #shards), First return is champ_shards second is mastery_tokens
+        Updates champion shards and mastery tokens in champions.db
+
+        :return:
         """
 
         # Call the API
@@ -311,6 +321,15 @@ class Client:
         self.con.commit()
 
     def add_to_database(self, row, comparison, column, data):
+        """
+        Adds information to champions.db
+
+        :param row: The row value to compare (usually name or championID)
+        :param comparison: What to select from that row (usually the champion name or champion id)
+        :param column: Column to insert the information into
+        :param data: Data to insert into the column
+        :return:
+        """
         # If data is a string
         if isinstance(data, str):
             self.con.execute(f'UPDATE Champions SET {column} = "{data}" WHERE {row} = "{comparison}"')
@@ -341,7 +360,6 @@ class Client:
 
         return [champion[0] for champion in fetch]
 
-    # Get all champs if owned or unowned. owned_status is true or false
     def get_champs(self, owned_status):
         """
         get_champs returns a list of owned or unowned champions
@@ -363,7 +381,6 @@ class Client:
 
         return [champion[0] for champion in result.fetchall()]
 
-    # Get number of champs if owned or unowned. owned_status is true or false
     def get_num_champs(self, owned_status):
         """
         get_num_champs returns an int for the number of owned or unowned champions
