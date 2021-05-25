@@ -23,3 +23,5 @@ print("IP Current minus owned:", client.get_ip_needed("current", True))
 
 print("All Data")
 client.print_all_data()
+
+client.get_sorted_champs("lastPlayed", "desc", "name", "asc", True)
