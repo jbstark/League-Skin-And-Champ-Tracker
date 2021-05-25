@@ -30,9 +30,15 @@ class Client:
         # Variables needed for lockfile
         self.url = None
         self.header = None
+
+        # Summoner Info
         self.summonerInfo = None
         self.summonerId = None
         self.summonerName = None
+
+        # Current Patch
+        self.currentPatch = None
+
         self.lockfileFound = False
 
         # Creates connection to champions.db
@@ -63,6 +69,7 @@ class Client:
         If not, self.clientRunning will be false, and other functions will not run
         :return:
         """
+
         # See if league client process is running
         for process in psutil.process_iter():
             try:
@@ -138,6 +145,8 @@ class Client:
         self.summonerInfo = self.call_api('/lol-summoner/v1/current-summoner')
         self.summonerId = self.summonerInfo["summonerId"]
         self.summonerName = self.summonerInfo["displayName"]
+        self.currentPatch = self.call_api('/system/v1/builds')['version']
+
 
     def call_api(self, address):
         """
