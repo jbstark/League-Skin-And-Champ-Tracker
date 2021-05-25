@@ -30,7 +30,9 @@ class Client:
         # Variables needed for lockfile
         self.url = None
         self.header = None
+        self.summonerInfo = None
         self.summonerId = None
+        self.summonerName = None
         self.lockfileFound = False
 
         # Creates connection to champions.db
@@ -133,7 +135,9 @@ class Client:
         self.header = {"Accept": "application/json", "Authorization": "Basic " + authorization_b64}
 
         # Get summonerID of logged in user
-        self.summonerId = self.call_api('/lol-summoner/v1/current-summoner')["summonerId"]
+        self.summonerInfo = self.call_api('/lol-summoner/v1/current-summoner')
+        self.summonerId = self.summonerInfo["summonerId"]
+        self.summonerName = self.summonerInfo["displayName"]
 
     def call_api(self, address):
         """
