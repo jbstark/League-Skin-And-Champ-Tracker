@@ -24,6 +24,79 @@
        <enum>QFrame::Raised</enum>
       </property>
       <layout class="QGridLayout" name="main_frame_grid_layout">
+       <item row="0" column="1">
+        <widget class="QTabWidget" name="tab_widget">
+         <property name="minimumSize">
+          <size>
+           <width>400</width>
+           <height>400</height>
+          </size>
+         </property>
+         <property name="font">
+          <font>
+           <weight>50</weight>
+           <bold>false</bold>
+          </font>
+         </property>
+         <property name="currentIndex">
+          <number>0</number>
+         </property>
+         <widget class="QWidget" name="champs_tab">
+          <property name="font">
+           <font>
+            <weight>50</weight>
+            <bold>false</bold>
+           </font>
+          </property>
+          <property name="toolTip">
+           <string/>
+          </property>
+          <attribute name="title">
+           <string>Champions</string>
+          </attribute>
+          <layout class="QGridLayout" name="champs_tab_grid_layout">
+           <item row="0" column="0">
+            <widget class="QScrollArea" name="champs_tab_scroll_area">
+             <property name="verticalScrollBarPolicy">
+              <enum>Qt::ScrollBarAsNeeded</enum>
+             </property>
+             <property name="horizontalScrollBarPolicy">
+              <enum>Qt::ScrollBarAlwaysOff</enum>
+             </property>
+             <property name="widgetResizable">
+              <bool>true</bool>
+             </property>
+             <widget class="QWidget" name="scrollAreaWidgetContents">
+              <property name="geometry">
+               <rect>
+                <x>0</x>
+                <y>0</y>
+                <width>430</width>
+                <height>475</height>
+               </rect>
+              </property>
+             </widget>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+         <widget class="QWidget" name="skins_tab">
+          <attribute name="title">
+           <string>Skins</string>
+          </attribute>
+         </widget>
+         <widget class="QWidget" name="current_event_tab">
+          <attribute name="title">
+           <string>Current Event</string>
+          </attribute>
+         </widget>
+         <widget class="QWidget" name="past_event_tab">
+          <attribute name="title">
+           <string>Past Event</string>
+          </attribute>
+         </widget>
+        </widget>
+       </item>
        <item row="0" column="0" alignment="Qt::AlignTop">
         <widget class="QWidget" name="settings_widget" native="true">
          <property name="sizePolicy">
@@ -45,74 +118,6 @@
           </size>
          </property>
          <layout class="QVBoxLayout" name="settings_vertical_layout">
-          <item>
-           <widget class="QWidget" name="api_username_frame" native="true">
-            <layout class="QFormLayout" name="api_username_form_layout">
-             <item row="0" column="0">
-              <widget class="QLineEdit" name="api_input">
-               <property name="toolTip">
-                <string/>
-               </property>
-               <property name="text">
-                <string/>
-               </property>
-               <property name="placeholderText">
-                <string>API key</string>
-               </property>
-              </widget>
-             </item>
-             <item row="0" column="1">
-              <widget class="QPushButton" name="api_update_button">
-               <property name="text">
-                <string>Update</string>
-               </property>
-              </widget>
-             </item>
-             <item row="1" column="0">
-              <widget class="QLabel" name="api_label">
-               <property name="text">
-                <string>API key: Not Set</string>
-               </property>
-              </widget>
-             </item>
-             <item row="2" column="0">
-              <widget class="QLineEdit" name="username_input">
-               <property name="placeholderText">
-                <string>Username</string>
-               </property>
-              </widget>
-             </item>
-             <item row="2" column="1">
-              <widget class="QPushButton" name="username_update_button">
-               <property name="text">
-                <string>Update</string>
-               </property>
-              </widget>
-             </item>
-             <item row="3" column="0">
-              <widget class="QLabel" name="username_label">
-               <property name="text">
-                <string>Username: Not Set</string>
-               </property>
-              </widget>
-             </item>
-             <item row="4" column="0">
-              <widget class="QLabel" name="last_refresh_label">
-               <property name="text">
-                <string>Last Refresh: Never</string>
-               </property>
-              </widget>
-             </item>
-             <item row="4" column="1">
-              <widget class="QPushButton" name="refresh_button">
-               <property name="text">
-                <string>Refresh</string>
-               </property>
-              </widget>
-             </item>
-            </layout>
-           </widget>
-          </item>
           <item>
            <widget class="QFrame" name="sort_frame">
             <property name="frameShape">
@@ -213,58 +218,76 @@
                </property>
               </widget>
              </item>
+             <item row="3" column="0">
+              <widget class="QLabel" name="last_refresh_label">
+               <property name="text">
+                <string>Last Refresh: Never</string>
+               </property>
+              </widget>
+             </item>
+             <item row="3" column="1">
+              <widget class="QPushButton" name="refresh_button">
+               <property name="maximumSize">
+                <size>
+                 <width>50</width>
+                 <height>16777215</height>
+                </size>
+               </property>
+               <property name="styleSheet">
+                <string>0</string>
+               </property>
+               <property name="text">
+                <string>Refresh</string>
+               </property>
+               <property name="checkable">
+                <bool>false</bool>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </item>
+          <item>
+           <widget class="QWidget" name="stats_widget" native="true">
+            <property name="minimumSize">
+             <size>
+              <width>0</width>
+              <height>100</height>
+             </size>
+            </property>
+            <layout class="QFormLayout" name="stats_widget_layout">
+             <item row="0" column="0">
+              <widget class="QLabel" name="num_champs_owned_label">
+               <property name="text">
+                <string>Number of Champions Owned:</string>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="0">
+              <widget class="QLabel" name="max_blue_essence_needed_label">
+               <property name="text">
+                <string>Maximum Blue Essence Needed:</string>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="1">
+              <widget class="QLabel" name="max_blue_essence_needed_value_label">
+               <property name="text">
+                <string>TextLabel</string>
+               </property>
+              </widget>
+             </item>
+             <item row="0" column="1">
+              <widget class="QLabel" name="num_champs_owned_value_label">
+               <property name="text">
+                <string>TextLabel</string>
+               </property>
+              </widget>
+             </item>
             </layout>
            </widget>
           </item>
          </layout>
-        </widget>
-       </item>
-       <item row="0" column="1">
-        <widget class="QTabWidget" name="tab_widget">
-         <property name="minimumSize">
-          <size>
-           <width>400</width>
-           <height>400</height>
-          </size>
-         </property>
-         <property name="font">
-          <font>
-           <weight>50</weight>
-           <bold>false</bold>
-          </font>
-         </property>
-         <property name="currentIndex">
-          <number>0</number>
-         </property>
-         <widget class="QWidget" name="champs_tab">
-          <property name="font">
-           <font>
-            <weight>50</weight>
-            <bold>false</bold>
-           </font>
-          </property>
-          <property name="toolTip">
-           <string/>
-          </property>
-          <attribute name="title">
-           <string>Champions</string>
-          </attribute>
-         </widget>
-         <widget class="QWidget" name="skins_tab">
-          <attribute name="title">
-           <string>Skins</string>
-          </attribute>
-         </widget>
-         <widget class="QWidget" name="current_event_tab">
-          <attribute name="title">
-           <string>Current Event</string>
-          </attribute>
-         </widget>
-         <widget class="QWidget" name="past_event_tab">
-          <attribute name="title">
-           <string>Past Event</string>
-          </attribute>
-         </widget>
         </widget>
        </item>
       </layout>
