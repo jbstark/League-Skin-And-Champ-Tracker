@@ -385,7 +385,7 @@ class Client:
         get_num_champs returns an int for the number of owned or unowned champions
 
         :param owned_status: Boolean for if the function should find owned (True) or unowned (False) champions
-        :return: Returns an int
+        :return: Returns an formatted string
         """
 
         if owned_status is True:
@@ -395,7 +395,7 @@ class Client:
         with self.con:
             result = self.con.execute("SELECT COUNT(*) FROM Champions WHERE owned = " + owned)
 
-        return result.fetchall()[0][0]
+        return f'{result.fetchall()[0][0]:,}'
 
     def get_ip_needed(self, version, subtract_owned):
         """
@@ -405,7 +405,7 @@ class Client:
         min is the total cost for all unowned champions with shards
         Default/current is the total cost for all unowned champions given current shards in loot
         :param subtract_owned: Whether to subtract the current amount of IP in the account
-        :return:
+        :return: Returns an formatted string
         """
 
         # Default current_ip is 0 unless requested to use
@@ -430,11 +430,11 @@ class Client:
             if version == "max":
                 # If at max cost it is negative throw exception
                 assert(maximum - current_ip > 0)
-                return int(maximum - current_ip)
+                return f'{int(maximum - current_ip):,}'
             elif version == "min":
                 # If at min cost it is negative throw exception
                 assert(int((maximum * .6) - current_ip) > 0)
-                return int((maximum * .6) - current_ip)
+                return f'{int((maximum * .6) - current_ip):,}'
 
             # Try to get all champions with shards. If it fails, then the discount is 0
             try:
@@ -445,7 +445,7 @@ class Client:
 
             # If at current cost it is negative throw exception
             assert(maximum - current_discount - current_ip > 0)
-            return int(maximum - current_discount - current_ip)
+            return f'{int(maximum - current_discount - current_ip):,}'
 
         except AssertionError:
             # Either no champs unowned, or user has enough IP
