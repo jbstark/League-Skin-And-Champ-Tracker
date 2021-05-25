@@ -155,14 +155,19 @@ class Client:
         try:
             # If the client errors, it is still loading
             if response['errorCode'] == 'Champion data has not yet been received.':
+
                 loading = True
+                num_seconds = 0
+
                 # While the client is loading
                 while loading:
-                    # Print the error to see if RPC_ERROR is loading specific or general error
-                    print(response)
+                    # If over 15 seconds for client to load, quit
+                    if num_seconds > 15:
+                        exit()
                     # Wait 1 seconds then retry API call
                     time.sleep(1)
                     response = self.call_api(f'/lol-champions/v1/inventories/{self.summonerId}/champions-minimal')
+
                     try:
                         # If it failed, client is still loading and stay in while loop
                         if response['message'] == 'Champion data has not yet been received.':
