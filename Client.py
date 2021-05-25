@@ -160,9 +160,10 @@ class Client:
         # If the request errors out because the client is still loading
         response = self.call_api(f'/lol-champions/v1/inventories/{self.summonerId}/champions-minimal')
 
+        print(response)
         try:
             # If the client errors, it is still loading
-            if response['errorCode'] == 'Champion data has not yet been received.':
+            if response['message'] == 'Champion data has not yet been received.':
 
                 loading = True
                 num_seconds = 0
@@ -174,13 +175,14 @@ class Client:
                         exit()
                     # Wait 1 seconds then retry API call
                     time.sleep(1)
+                    num_seconds += 1
                     response = self.call_api(f'/lol-champions/v1/inventories/{self.summonerId}/champions-minimal')
 
                     try:
                         # If it failed, client is still loading and stay in while loop
                         if response['message'] == 'Champion data has not yet been received.':
                             pass
-                    except (KeyError, TypeError):
+                    except (KeyError, TypeError, AttributeError):
                         # If an error was generated, then it stopped loading
                         loading = False
         # Client is fully loaded, so pass
@@ -396,6 +398,16 @@ class Client:
             result = self.con.execute("SELECT COUNT(*) FROM Champions WHERE owned = " + owned)
 
         return f'{result.fetchall()[0][0]:,}'
+
+    def get_sorted_champs(self, primary_sort, primary_direction, secondary_sort, secondary_direction, show_unowned):
+
+        if show_unowned:
+            result = self.con.execute("SELECT * FROM Champions WHERE owned = 1 ORDER BY " +
+                                      f"{primary_sort} {primary_direction},{secondary_sort} {secondary_direction}")
+        else:
+            result = self.con.execute(f"SELECT * FROM Champions ORDER BY " +
+                                      f"{primary_sort} {primary_direction}, {secondary_sort} {secondary_direction}")
+        print(result.fetchall())
 
     def get_ip_needed(self, version, subtract_owned):
         """
