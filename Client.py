@@ -2,12 +2,15 @@ import base64
 import json
 import sqlite3
 import os
+import time
 from datetime import datetime
 import psutil
 import requests
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 
 TIME_FORMAT = '%Y-%m-%d %H:%M:%S'
+
+# TODO when printing date convert from UTC to local time
 
 
 class Client:
@@ -28,30 +31,41 @@ class Client:
         # Variables needed for lockfile
         self.url = None
         self.header = None
+
+        # Summoner Info
+        self.summonerInfo = None
         self.summonerId = None
+        self.summonerName = None
+
+        # Current Patch
+        self.currentPatch = None
+
         self.lockfileFound = False
 
         # Creates connection to champions.db
         self.con = sqlite3.connect("champions.db")
-        with self.con:
-            # Champion name, Champion ID, Owned, IP cost, Num champ shards, Mastery Level, Mastery tokens, UTC date play
-            self.con.execute("CREATE TABLE if not exists Champions (name TEXT UNIQUE, championID INTEGER, " +
-                             "owned INTEGER, cost INTEGER, champShards int, championMastery int, masteryTokens int, " +
-                             "lastPlayed TEXT)")
 
+        self.check_db()
         self.check_client_running()
 
-        # TODO Update if patch of client doesnt match patch of app
+    def check_db(self):
 
-    def add_cols(self):
-        # TODO fix this so that it is automatic and users can skip updates
-        """
-        If the table is updated, add column here
-        :return:
-        """
+        # All columns (besides name) in the DB. Add a tuple here to add a column
+        columns = [("championID", "INTEGER"), ("owned", "INTEGER"), ("cost", "INTEGER"), ("champShards", "INTEGER"),
+                   ("championMastery", "INTEGER"), ("masteryTokens", "INTEGER"), ("lastPlayed", "TEXT")]
+
         with self.con:
-            # Champion name, Champion ID, Owned, IP cost, Num champ shards, Mastery Level, Mastery tokens, UTC date play
-            self.con.execute("ALTER TABLE Champions ADD COLUMN lastPlayed TEXT")
+            self.con.execute("CREATE TABLE if not exists Champions (name TEXT UNIQUE)")
+
+            # Check cols of DB and compare to list of all cols in current version. Add missing
+            for col in columns:
+                col_name = col[0]
+                col_type = col[1]
+                try:
+                    self.con.execute(f"ALTER TABLE Champions ADD COLUMN {col_name} {col_type}")
+                except sqlite3.OperationalError:
+                    # Column Already Exists
+                    pass
 
     def check_client_running(self):
         """
@@ -59,8 +73,10 @@ class Client:
         If it is possibleDirectories is updated with the directory, and find_lockfile is run
         This should be where lockfile is
         If not, self.clientRunning will be false, and other functions will not run
+
         :return:
         """
+
         # See if league client process is running
         for process in psutil.process_iter():
             try:
@@ -81,6 +97,7 @@ class Client:
     def find_lockfile(self):
         """
         Finds the lockfile as long as lockfile is in a folder in possibleDirectories
+
         :return:
         """
 
@@ -111,14 +128,17 @@ class Client:
 
         self.build_api(port, password)
 
+        # TODO Update if patch of client doesnt match patch of app
+
         self.update_all_champions()
 
     def build_api(self, port, password):
         """
         Sets up the data needed to call the API later.
+
         :param port: The port which the riot games client is running on
         :param password: The password in the lockfile
-        :return: none
+        :return:
         """
         # Get client API url
         self.url = 'https://127.0.0.1:' + port
@@ -131,11 +151,46 @@ class Client:
         self.header = {"Accept": "application/json", "Authorization": "Basic " + authorization_b64}
 
         # Get summonerID of logged in user
-        self.summonerId = self.call_api('/lol-summoner/v1/current-summoner')["summonerId"]
+        self.summonerInfo = self.call_api('/lol-summoner/v1/current-summoner')
+        self.summonerId = self.summonerInfo["summonerId"]
+        self.summonerName = self.summonerInfo["displayName"]
+        self.currentPatch = self.call_api('/system/v1/builds')['version']
+
+        # Client is loaded, but unsure if all requests can work yet. This code repeats until everything is loaded
+        # If the request errors out because the client is still loading
+        response = self.call_api(f'/lol-champions/v1/inventories/{self.summonerId}/champions-minimal')
+
+        try:
+            # If the client errors, it is still loading
+            if response['errorCode'] == 'Champion data has not yet been received.':
+
+                loading = True
+                num_seconds = 0
+
+                # While the client is loading
+                while loading:
+                    # If over 15 seconds for client to load, quit
+                    if num_seconds > 15:
+                        exit()
+                    # Wait 1 seconds then retry API call
+                    time.sleep(1)
+                    response = self.call_api(f'/lol-champions/v1/inventories/{self.summonerId}/champions-minimal')
+
+                    try:
+                        # If it failed, client is still loading and stay in while loop
+                        if response['message'] == 'Champion data has not yet been received.':
+                            pass
+                    except (KeyError, TypeError):
+                        # If an error was generated, then it stopped loading
+                        loading = False
+        # Client is fully loaded, so pass
+        except (KeyError, TypeError, AttributeError):
+            pass
 
     def call_api(self, address):
         """
         Calls the API
+
         :param address: The request to make to the API
         :return: the json of the response
         """
@@ -143,11 +198,13 @@ class Client:
             return None
         request = self.url + address
         response = requests.get(request, verify=False, headers=self.header)
+
         return json.loads(response.text)
 
     def update(self):
         """
         Updates the information from the client. Used for changes in status (champions, skins, etc.)
+
         :return:
         """
         # Refresh which champions are owned
@@ -156,6 +213,8 @@ class Client:
     def update_all_champions(self):
         """
         Gets champion information form LCU
+        Calls update_champion_costs(), update_mastery_and_date(), update_loot()
+
         :return:
         """
 
@@ -168,58 +227,31 @@ class Client:
 
         response_json.sort(key=sort_champs)
 
-        # Get Blue Essence Costs
-        prices = self.update_champion_costs()
-
-        # Get champ Shards and Mastery Tokens
-        champ_shards, mastery_tokens = self.update_loot()
-
-        # Get Champion Mastery
-        mastery, last_played = self.update_mastery_and_date()
-
         for champion in response_json:
             if champion['name'] != "None":
+                # Add champion to Database
                 champion_name = champion['name']
+                self.con.execute(f'INSERT or IGNORE INTO Champions (name) VALUES (?)', (champion_name,))
+
+                # Add ID to Database
                 champion_id = champion['id']
-                owned = str(int(champion["ownership"]["owned"]))
+                self.add_to_database("name", champion_name, "championID", champion_id)
 
-                # Get Cost
-                cost = prices[champion_name]
-                # Get Champion Shards
-                num_shards = champ_shards[champion_name]
+                # Add Owned Status to Database
+                owned = int(champion["ownership"]["owned"])
+                self.add_to_database("name", champion_name, "owned", owned)
+        self.con.commit()
 
-                # Get mastery level
-                try:
-                    mastery_level = mastery[champion_id]
-                except KeyError:
-                    # Champion has no mastery
-                    mastery_level = 0
-
-                # Get last played date
-                try:
-                    date = last_played[champion_id]
-                except KeyError:
-                    # Champion has no lastPlayed (Meaning no mastery)
-                    date = 0
-
-                # Get number of tokens
-                num_tokens = mastery_tokens[champion_name]
-
-                try:
-                    # name TEXT, owned INTEGER, cost INTEGER, champShards int, championMastery int, masteryTokens int
-                    self.con.execute(f'INSERT OR REPLACE INTO Champions VALUES ("{champion_name}", {champion_id}, ' +
-                                     f'{owned}, {cost}, {num_shards}, {mastery_level}, {num_tokens}, "{date}")')
-                    # champShards int, championMastery int, masteryTokens int)
-                except sqlite3.OperationalError:
-                    # Old table, add column
-                    self.add_cols()
-                    self.con.execute(f'INSERT OR REPLACE INTO Champions VALUES ("{champion_name}", {champion_id}, ' +
-                                     f'{owned}, {cost}, {num_shards}, {mastery_level}, {num_tokens}, "{date}")')
+        # Update other columns
+        self.update_champion_costs()
+        self.update_mastery_and_date()
+        self.update_loot()
 
     def update_champion_costs(self):
         """
-        Updates the cost of champions in the champions.db table. Used for change in price or new champions
-        :return: a dictionary of champion names and their cost
+        Updates the cost of champions in the champions.db table.
+
+        :return:
         """
 
         # Make request
@@ -229,23 +261,20 @@ class Client:
         if response_json is None:
             return "Client not connected. Please refresh"
 
-        all_champs = self.get_all_champs()
-        champion_costs = {champ: 0 for champ in all_champs}
-
         # Get the localization for getting champion cost
         localization = [*response_json[0]["localizations"]][0]
 
         for champion in response_json:
             name = champion["localizations"][localization]["name"]
             ip_cost = str(champion["prices"][0]["cost"])
-            champion_costs[name] = ip_cost
-
-        return champion_costs
+            self.add_to_database("name", name, "cost", ip_cost)
+        self.con.commit()
 
     def update_mastery_and_date(self):
         """
-        Retrieves champion mastery for champions with mastery (owned)
-        :return: a dict of championID and mastery levels. Use try except to set champs not here to 0
+        Updates champion mastery and date last played in champions.db
+
+        :return:
         """
 
         # Make request
@@ -255,22 +284,19 @@ class Client:
         if response_json is None:
             return "Client not connected. Please refresh"
 
-        mastery = dict()
-        date = dict()
-
-        # Create Dictionary
         for champion in response_json:
-            mastery[champion['championId']] = champion['championLevel']
+            mastery_level = champion['championLevel']
             # Last date mastery points were gained on a champion
-            # TODO Convert UTC To local time?
-            date[champion['championId']] = datetime.utcfromtimestamp(champion['lastPlayTime'] / 1e3)\
-                .strftime('%Y-%m-%d %H:%M:%S')
-        return mastery, date
+            date = datetime.utcfromtimestamp(champion['lastPlayTime'] / 1e3).strftime('%Y-%m-%d %H:%M:%S')
+            self.add_to_database("championID", champion["championId"], "championMastery", mastery_level)
+            self.add_to_database("championID", champion["championId"], "lastPlayed", date)
+        self.con.commit()
 
     def update_loot(self):
         """
-        Gets loot from league client and then updates the table
-        :return: two lists of tuples (champion, #shards), First return is champ_shards second is mastery_tokens
+        Updates champion shards and mastery tokens in champions.db
+
+        :return:
         """
 
         # Call the API
@@ -280,22 +306,34 @@ class Client:
         if response_json is None:
             return "Client not connected. Please refresh"
 
-        all_champs = self.get_all_champs()
-        shards = {champ: 0 for champ in all_champs}
-        token = shards.copy()
-
         for item in response_json:
             # Champion Shards
             if item["displayCategories"] == "CHAMPION":
                 name = item["itemDesc"]
                 num_owned = item["count"]
-                shards[name] = num_owned
+                self.add_to_database("name", name, "champShards", num_owned)
             # Mastery Tokens
             elif item["displayCategories"] == "CHEST" and item["type"] == "CHAMPION_TOKEN":
                 name = item["itemDesc"]
                 num_owned = item["count"]
-                token[name] = num_owned
-        return shards, token
+                self.add_to_database("name", name, "masteryTokens", num_owned)
+        self.con.commit()
+
+    def add_to_database(self, row, comparison, column, data):
+        """
+        Adds information to champions.db
+
+        :param row: The row value to compare (usually name or championID)
+        :param comparison: What to select from that row (usually the champion name or champion id)
+        :param column: Column to insert the information into
+        :param data: Data to insert into the column
+        :return:
+        """
+        # If data is a string
+        if isinstance(data, str):
+            self.con.execute(f'UPDATE Champions SET {column} = "{data}" WHERE {row} = "{comparison}"')
+        else:
+            self.con.execute(f'UPDATE Champions SET {column} = {data} WHERE {row} = "{comparison}"')
 
     def get_all_champs(self):
         """
@@ -321,7 +359,6 @@ class Client:
 
         return [champion[0] for champion in fetch]
 
-    # Get all champs if owned or unowned. owned_status is true or false
     def get_champs(self, owned_status):
         """
         get_champs returns a list of owned or unowned champions
@@ -343,7 +380,6 @@ class Client:
 
         return [champion[0] for champion in result.fetchall()]
 
-    # Get number of champs if owned or unowned. owned_status is true or false
     def get_num_champs(self, owned_status):
         """
         get_num_champs returns an int for the number of owned or unowned champions
@@ -421,10 +457,6 @@ class Client:
 
         :return:
         """
-        # Return error if lockfile never opened
-        if not self.clientRunning:
-            return "Client not connected. Please refresh"
-
         all_data = self.con.execute("SELECT * FROM Champions")
         print(all_data.fetchall())
 
