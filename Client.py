@@ -231,7 +231,6 @@ class Client:
             if champion['name'] != "None":
                 # Add champion to Database
                 champion_name = champion['name']
-                print(champion_name)
                 self.con.execute(f'INSERT or IGNORE INTO Champions (name) VALUES (?)', (champion_name,))
 
                 # Add ID to Database
