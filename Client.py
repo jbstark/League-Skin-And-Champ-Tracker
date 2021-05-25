@@ -2,6 +2,7 @@ import base64
 import json
 import sqlite3
 import os
+import time
 from datetime import datetime
 import psutil
 import requests
@@ -147,6 +148,31 @@ class Client:
         self.summonerName = self.summonerInfo["displayName"]
         self.currentPatch = self.call_api('/system/v1/builds')['version']
 
+        # Client is loaded, but unsure if all requests can work yet. This code repeats until everything is loaded
+        # If the request errors out because the client is still loading
+        response = self.call_api(f'/lol-champions/v1/inventories/{self.summonerId}/champions-minimal')
+
+        try:
+            # If the client errors, it is still loading
+            if response['errorCode'] == 'Champion data has not yet been received.':
+                loading = True
+                # While the client is loading
+                while loading:
+                    # Print the error to see if RPC_ERROR is loading specific or general error
+                    print(response)
+                    # Wait 1 seconds then retry API call
+                    time.sleep(1)
+                    response = self.call_api(f'/lol-champions/v1/inventories/{self.summonerId}/champions-minimal')
+                    try:
+                        # If it failed, client is still loading and stay in while loop
+                        if response['message'] == 'Champion data has not yet been received.':
+                            pass
+                    except (KeyError, TypeError):
+                        # If an error was generated, then it stopped loading
+                        loading = False
+        # Client is fully loaded, so pass
+        except (KeyError, TypeError, AttributeError):
+            pass
 
     def call_api(self, address):
         """
@@ -158,6 +184,7 @@ class Client:
             return None
         request = self.url + address
         response = requests.get(request, verify=False, headers=self.header)
+
         return json.loads(response.text)
 
     def update(self):
