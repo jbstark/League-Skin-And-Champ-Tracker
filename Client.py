@@ -408,6 +408,8 @@ class Client:
         :return: Returns an formatted string
         """
 
+        # TODO factor in extra champ shards to cost
+
         # Default current_ip is 0 unless requested to use
         current_ip = 0
 
