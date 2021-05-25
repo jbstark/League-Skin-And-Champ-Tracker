@@ -220,47 +220,26 @@ class Client:
 
         response_json.sort(key=sort_champs)
 
-        # Get Blue Essence Costs
-        prices = self.update_champion_costs()
-
-        # Get champ Shards and Mastery Tokens
-        champ_shards, mastery_tokens = self.update_loot()
-
-        # Get Champion Mastery
-        mastery, last_played = self.update_mastery_and_date()
-
         for champion in response_json:
             if champion['name'] != "None":
+                # Add champion to Database
                 champion_name = champion['name']
+                print(champion_name)
+                self.con.execute(f'INSERT or IGNORE INTO Champions (name) VALUES (?)', (champion_name,))
+
+                # Add ID to Database
                 champion_id = champion['id']
-                owned = str(int(champion["ownership"]["owned"]))
+                self.add_to_database("name", champion_name, "championID", champion_id)
 
-                # Get Cost
-                cost = prices[champion_name]
-                # Get Champion Shards
-                num_shards = champ_shards[champion_name]
+                # Add Owned Status to Database
+                owned = int(champion["ownership"]["owned"])
+                self.add_to_database("name", champion_name, "owned", owned)
+        self.con.commit()
 
-                # Get mastery level
-                try:
-                    mastery_level = mastery[champion_id]
-                except KeyError:
-                    # Champion has no mastery
-                    mastery_level = 0
-
-                # Get last played date
-                try:
-                    date = last_played[champion_id]
-                except KeyError:
-                    # Champion has no lastPlayed (Meaning no mastery)
-                    date = 0
-
-                # Get number of tokens
-                num_tokens = mastery_tokens[champion_name]
-
-                # name TEXT, owned INTEGER, cost INTEGER, champShards int, championMastery int, masteryTokens int
-                self.con.execute(f'INSERT OR REPLACE INTO Champions VALUES ("{champion_name}", {champion_id}, ' +
-                                 f'{owned}, {cost}, {num_shards}, {mastery_level}, {num_tokens}, "{date}")')
-                # champShards int, championMastery int, masteryTokens int)
+        # Update other columns
+        self.update_champion_costs()
+        self.update_mastery_and_date()
+        self.update_loot()
 
     def update_champion_costs(self):
         """
@@ -275,18 +254,14 @@ class Client:
         if response_json is None:
             return "Client not connected. Please refresh"
 
-        all_champs = self.get_all_champs()
-        champion_costs = {champ: 0 for champ in all_champs}
-
         # Get the localization for getting champion cost
         localization = [*response_json[0]["localizations"]][0]
 
         for champion in response_json:
             name = champion["localizations"][localization]["name"]
             ip_cost = str(champion["prices"][0]["cost"])
-            champion_costs[name] = ip_cost
-
-        return champion_costs
+            self.add_to_database("name", name, "cost", ip_cost)
+        self.con.commit()
 
     def update_mastery_and_date(self):
         """
@@ -301,16 +276,13 @@ class Client:
         if response_json is None:
             return "Client not connected. Please refresh"
 
-        mastery = dict()
-        date = dict()
-
-        # Create Dictionary
         for champion in response_json:
-            mastery[champion['championId']] = champion['championLevel']
+            mastery_level = champion['championLevel']
             # Last date mastery points were gained on a champion
-            date[champion['championId']] = datetime.utcfromtimestamp(champion['lastPlayTime'] / 1e3)\
-                .strftime('%Y-%m-%d %H:%M:%S')
-        return mastery, date
+            date = datetime.utcfromtimestamp(champion['lastPlayTime'] / 1e3).strftime('%Y-%m-%d %H:%M:%S')
+            self.add_to_database("championID", champion["championId"], "championMastery", mastery_level)
+            self.add_to_database("championID", champion["championId"], "lastPlayed", date)
+        self.con.commit()
 
     def update_loot(self):
         """
@@ -325,22 +297,25 @@ class Client:
         if response_json is None:
             return "Client not connected. Please refresh"
 
-        all_champs = self.get_all_champs()
-        shards = {champ: 0 for champ in all_champs}
-        token = shards.copy()
-
         for item in response_json:
             # Champion Shards
             if item["displayCategories"] == "CHAMPION":
                 name = item["itemDesc"]
                 num_owned = item["count"]
-                shards[name] = num_owned
+                self.add_to_database("name", name, "champShards", num_owned)
             # Mastery Tokens
             elif item["displayCategories"] == "CHEST" and item["type"] == "CHAMPION_TOKEN":
                 name = item["itemDesc"]
                 num_owned = item["count"]
-                token[name] = num_owned
-        return shards, token
+                self.add_to_database("name", name, "masteryTokens", num_owned)
+        self.con.commit()
+
+    def add_to_database(self, row, comparison, column, data):
+        # If data is a string
+        if isinstance(data, str):
+            self.con.execute(f'UPDATE Champions SET {column} = "{data}" WHERE {row} = "{comparison}"')
+        else:
+            self.con.execute(f'UPDATE Champions SET {column} = {data} WHERE {row} = "{comparison}"')
 
     def get_all_champs(self):
         """
