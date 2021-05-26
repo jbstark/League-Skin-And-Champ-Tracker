@@ -307,17 +307,34 @@ class Client:
         if response_json is None:
             return "Client not connected. Please refresh"
 
+        # Lists of all champions, takes off champions with values to then have all that should be 0
+        all_champs_shards = self.get_all_champs()
+        all_champs_tokens = all_champs_shards.copy()
+
         for item in response_json:
             # Champion Shards
             if item["displayCategories"] == "CHAMPION":
                 name = item["itemDesc"]
                 num_owned = item["count"]
                 self.add_to_database("name", name, "champShards", num_owned)
+                # Remove champion from list, as its value will be added
+                all_champs_shards.remove(name)
             # Mastery Tokens
             elif item["displayCategories"] == "CHEST" and item["type"] == "CHAMPION_TOKEN":
                 name = item["itemDesc"]
                 num_owned = item["count"]
                 self.add_to_database("name", name, "masteryTokens", num_owned)
+                # Remove champion from list, as its value will be added
+                all_champs_tokens.remove(name)
+
+        # All champions with no shards should be set to null
+        for champ in all_champs_shards:
+            self.add_to_database("name", champ, "champShards", None)
+
+        # All champions with no tokens should be set to null
+        for champ in all_champs_tokens:
+            self.add_to_database("name", champ, "masteryTokens", None)
+
         self.con.commit()
 
     def add_to_database(self, row, comparison, column, data):
@@ -333,6 +350,9 @@ class Client:
         # If data is a string
         if isinstance(data, str):
             self.con.execute(f'UPDATE Champions SET {column} = "{data}" WHERE {row} = "{comparison}"')
+        # If data should result in None
+        elif data is None:
+            self.con.execute(f'UPDATE Champions SET {column} = NULL WHERE {row} = "{comparison}"')
         else:
             self.con.execute(f'UPDATE Champions SET {column} = {data} WHERE {row} = "{comparison}"')
 
