@@ -408,14 +408,16 @@ class Client:
                                       f"{primary_sort} {primary_direction}, {secondary_sort} {secondary_direction}")
         print(result.fetchall())
 
-    def get_ip_needed(self, version, subtract_owned):
+    def get_ip_needed(self, version, subtract_owned, use_extra_shards):
         """
         Computes the IP/BE needed to buy all champions left
+
         :param version: max, min or best. Determines which IP value to get
         max is the total cost for all unowned champions without shards
         min is the total cost for all unowned champions with shards
         Default/current is the total cost for all unowned champions given current shards in loot
         :param subtract_owned: Whether to subtract the current amount of IP in the account
+        :param use_extra_shards: Whether to use extra shards (any owned and >1 of unowned) for calculation
         :return: Returns an formatted string
         """
 
@@ -434,6 +436,26 @@ class Client:
 
         # Get the maximum cost of all unowned champions
         maximum = self.con.execute("SELECT SUM (cost) FROM Champions WHERE owned = 0").fetchone()[0]
+
+        # Only get extra shards if they can be used, and will be subtracted
+        if use_extra_shards and subtract_owned:
+            # Get owned champions that also have shards
+            try:
+                owned_disenchant = self.con.execute("SELECT SUM (cost * champShards) FROM Champions WHERE" +
+                                                    " owned = 1 AND champShards > 0").fetchone()[0] * .2
+                current_ip += owned_disenchant
+            except TypeError:
+                # No owned champ shards to disenchant
+                pass
+
+            # Get duplicates for unowned champions
+            try:
+                unowned_extras = self.con.execute("SELECT SUM (cost*(champShards-1)) FROM Champions WHERE" +
+                                                  " owned = 0 AND champShards > 1").fetchone()[0] * .2
+                current_ip += unowned_extras
+            except TypeError:
+                # No unowned champs with 2 or more shards
+                pass
 
         # if try fails, then the cost needed to purchase all champions is 0
         try:
