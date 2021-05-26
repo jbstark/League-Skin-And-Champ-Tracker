@@ -160,7 +160,6 @@ class Client:
         # If the request errors out because the client is still loading
         response = self.call_api(f'/lol-champions/v1/inventories/{self.summonerId}/champions-minimal')
 
-        print(response)
         try:
             # If the client errors, it is still loading
             if response['message'] == 'Champion data has not yet been received.':
