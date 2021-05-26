@@ -1,13 +1,18 @@
 from QtGUI import Ui_MainWindow
 from Client import Client
 from flowlayout import FlowLayout
-from PyQt5 import QtWidgets, QtCore
+from PyQt5 import QtWidgets, QtCore, QtGui
 from datetime import datetime
 
 
 class TrackerWindow(QtWidgets.QMainWindow):
 
     def __init__(self, *args, **kwargs):
+        """
+        Initialises the main window for the application. Inherits from QMainWindow.
+        :param args: Non-Keyword Arguments
+        :param kwargs: Keyword Arguments
+        """
         super().__init__(*args, **kwargs)
 
         self.ui = Ui_MainWindow()
@@ -22,17 +27,26 @@ class TrackerWindow(QtWidgets.QMainWindow):
         self.refresh()
 
     def setup_refresh_button(self):
+        """
+        Configures the refresh button
+        """
         self.ui.refresh_button.clicked.connect(self.refresh)
 
     def setup_refresh_label_timer(self):
+        """
+        Configures and starts the refresh label timer
+        """
         self.ui.refresh_label_timer = QtCore.QTimer(self.ui.last_refresh_label)
         self.ui.refresh_label_timer.setObjectName("refresh_label_timer")
-        self.ui.refresh_label_timer.setInterval(60000)
-        self.ui.refresh_label_timer.setSingleShot(False)
-        self.ui.refresh_label_timer.timeout.connect(self.reset_refresh_label)
+        self.ui.refresh_label_timer.setInterval(60000)  # 60 seconds
+        self.ui.refresh_label_timer.setSingleShot(False)  # repeat timer on timeout
+        self.ui.refresh_label_timer.timeout.connect(self.reset_refresh_label)  # call reset_refresh_label on timeout
         self.ui.refresh_label_timer.start()
 
     def refresh(self):
+        """
+        Updates client data and resets its text
+        """
         self.client.update()
         self.ui.num_champs_owned_value_label.setText(self.client.get_num_champs(True))
         self.ui.max_blue_essence_needed_value_label.setText(self.client.get_ip_needed("max", True, True))
@@ -41,6 +55,9 @@ class TrackerWindow(QtWidgets.QMainWindow):
         self.reset_refresh_label()
 
     def reset_refresh_label(self):
+        """
+        Updates the refresh label with correct elapsed time
+        """
         elapsed_time = datetime.now() - self.last_refresh_time
         elapsed_seconds = elapsed_time.total_seconds()
         elapsed_minutes = int(elapsed_seconds / 60)
