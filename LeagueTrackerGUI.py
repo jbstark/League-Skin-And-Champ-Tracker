@@ -35,7 +35,7 @@ class TrackerWindow(QtWidgets.QMainWindow):
     def refresh(self):
         self.client.update()
         self.ui.num_champs_owned_value_label.setText(self.client.get_num_champs(True))
-        self.ui.max_blue_essence_needed_value_label.setText(self.client.get_ip_needed("max", True))
+        self.ui.max_blue_essence_needed_value_label.setText(self.client.get_ip_needed("max", True, True))
 
         self.last_refresh_time = datetime.now()
         self.reset_refresh_label()
