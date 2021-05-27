@@ -347,14 +347,21 @@ class Client:
         :param data: Data to insert into the column
         :return:
         """
-        # If data is a string
+
+        # Format data for update
         if isinstance(data, str):
-            self.con.execute(f'UPDATE Champions SET {column} = "{data}" WHERE {row} = "{comparison}"')
-        # If data should result in None
+            data = f'"{data}"'
         elif data is None:
-            self.con.execute(f'UPDATE Champions SET {column} = NULL WHERE {row} = "{comparison}"')
-        else:
-            self.con.execute(f'UPDATE Champions SET {column} = {data} WHERE {row} = "{comparison}"')
+            data = "Null"
+
+        # Format comparison for update
+        if isinstance(comparison, str):
+            comparison = f'"{comparison}"'
+        elif comparison is None:
+            comparison = "Null"
+
+        # Execute update
+        self.con.execute(f'UPDATE Champions SET {column} = {data} WHERE {row} = {comparison}')
 
     def get_all_champs(self):
         """
