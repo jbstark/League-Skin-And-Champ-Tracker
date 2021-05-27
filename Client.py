@@ -329,11 +329,11 @@ class Client:
 
         # All champions with no shards should be set to null
         for champ in all_champs_shards:
-            self.add_to_database("name", champ, "champShards", None)
+            self.add_to_database("name", champ, "champShards", 0)
 
         # All champions with no tokens should be set to null
         for champ in all_champs_tokens:
-            self.add_to_database("name", champ, "masteryTokens", None)
+            self.add_to_database("name", champ, "masteryTokens", 0)
 
         self.con.commit()
 
