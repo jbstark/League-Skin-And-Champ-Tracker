@@ -52,7 +52,7 @@ class Client:
     def check_db(self):
 
         # Create file for each user
-        filename = "lol-" + self.summonerName + ".db"
+        filename = "lol_" + self.summonerName + ".db"
         self.con = sqlite3.connect(filename)
 
         # All columns (besides name) in the DB. Add a tuple here to add a column
@@ -60,7 +60,8 @@ class Client:
                              ("champShards", "INTEGER"), ("championMastery", "INTEGER"), ("masteryTokens", "INTEGER"),
                              ("lastPlayed", "TEXT")]
         columns_player = [("summonerID", "INTEGER"), ("accountID", "INTEGER"), ("level", "INTEGER"),
-                          ("blueEssence", "INTEGER"), ("riotPoints", "INTEGER")]
+                          ("blueEssence", "INTEGER"), ("riotPoints", "INTEGER"), ("eventName", "TEXT"),
+                          ("eventTokens", "INTEGER")]
 
         with self.con:
             self.con.execute("CREATE TABLE if not exists Champions (name TEXT UNIQUE)")
@@ -229,9 +230,13 @@ class Client:
 
         :return:
         """
-        # Refresh which champions are owned
-        self.update_all_champions()
-        self.update_summoner()
+        if self.clientRunning:
+            # Refresh which champions are owned
+            self.update_all_champions()
+            self.update_summoner()
+        else:
+            # If the client is not running, tries again
+            self.check_client_running()
 
     def update_summoner(self):
         account_id = self.summonerInfo["accountId"]
@@ -248,6 +253,44 @@ class Client:
         self.add_to_database("Player", "username", self.summonerName, "level", summoner_level)
         self.add_to_database("Player", "username", self.summonerName, "blueEssence", be)
         self.add_to_database("Player", "username", self.summonerName, "riotPoints", rp)
+
+        self.update_user_loot()
+
+    def update_user_loot(self):
+        # Call the API
+        response_json = self.call_api('/lol-loot/v1/player-loot')
+
+        # if the API call fails
+        if response_json is None:
+            return "Client not connected. Please refresh"
+
+        # For looking for event tokens
+        event_description_start = "Gained from purchasing event content or completing event missions."
+
+        # Tracks if an event is running
+        event_running = False
+
+        for item in response_json:
+            # Event Tokens
+            # todo check next pass to see if this will work for all
+            if item["localizedDescription"].find(event_description_start) != -1:
+                token_name = item["localizedName"]
+                current_tokens = item["count"]
+
+                # Add event name
+                self.add_to_database("Player", "username", self.summonerName, "eventName", token_name)
+
+                # Add event tokens
+                self.add_to_database("Player", "username", self.summonerName, "eventTokens", current_tokens)
+
+                event_running = True
+        if not event_running:
+            # Add event name
+            self.add_to_database("Player", "username", self.summonerName, "eventName", None)
+
+            # Add event tokens
+            self.add_to_database("Player", "username", self.summonerName, "eventTokens", None)
+        self.con.commit()
 
     def update_all_champions(self):
         """
@@ -367,10 +410,6 @@ class Client:
                 self.add_to_database("Champions", "name", name, "masteryTokens", num_owned)
                 # Remove champion from list, as its value will be added
                 all_champs_tokens.remove(name)
-            # Event Tokens
-            # todo check next pass to see if this will work for all
-            elif item["localizedDescription"].find(event_description_start) != -1:
-                print("Has tokens")
 
         # All champions with no shards should be set to null
         for champ in all_champs_shards:
