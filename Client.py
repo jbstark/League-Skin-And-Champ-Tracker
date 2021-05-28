@@ -45,12 +45,15 @@ class Client:
         self.lockfileFound = False
 
         # Creates connection to champions.db
-        self.con = sqlite3.connect("userData.db")
+        self.con = None
 
-        self.check_db()
         self.check_client_running()
 
     def check_db(self):
+
+        # Create file for each user
+        filename = "lol-" + self.summonerName + ".db"
+        self.con = sqlite3.connect(filename)
 
         # All columns (besides name) in the DB. Add a tuple here to add a column
         columns_champions = [("championID", "INTEGER"), ("owned", "INTEGER"), ("cost", "INTEGER"),
@@ -143,6 +146,8 @@ class Client:
         password = file_contents[3]
 
         self.build_api(port, password)
+
+        self.check_db()
 
         # TODO Update if patch of client doesnt match patch of app
         self.update()
@@ -366,8 +371,6 @@ class Client:
             # todo check next pass to see if this will work for all
             elif item["localizedDescription"].find(event_description_start) != -1:
                 print("Has tokens")
-
-
 
         # All champions with no shards should be set to null
         for champ in all_champs_shards:
