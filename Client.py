@@ -12,6 +12,8 @@ TIME_FORMAT = '%Y-%m-%d %H:%M:%S'
 
 # TODO when printing date convert from UTC to local time
 
+# TODO add player to Champions table to store all information
+
 
 class Client:
 
@@ -43,7 +45,7 @@ class Client:
         self.lockfileFound = False
 
         # Creates connection to champions.db
-        self.con = sqlite3.connect("champions.db")
+        self.con = sqlite3.connect("userData.db")
 
         self.check_db()
         self.check_client_running()
@@ -51,18 +53,32 @@ class Client:
     def check_db(self):
 
         # All columns (besides name) in the DB. Add a tuple here to add a column
-        columns = [("championID", "INTEGER"), ("owned", "INTEGER"), ("cost", "INTEGER"), ("champShards", "INTEGER"),
-                   ("championMastery", "INTEGER"), ("masteryTokens", "INTEGER"), ("lastPlayed", "TEXT")]
+        columns_champions = [("championID", "INTEGER"), ("owned", "INTEGER"), ("cost", "INTEGER"),
+                             ("champShards", "INTEGER"), ("championMastery", "INTEGER"), ("masteryTokens", "INTEGER"),
+                             ("lastPlayed", "TEXT")]
+        columns_player = [("summonerID", "INTEGER"), ("accountID", "INTEGER"), ("level", "INTEGER"),
+                          ("blueEssence", "INTEGER")]
 
         with self.con:
             self.con.execute("CREATE TABLE if not exists Champions (name TEXT UNIQUE)")
+            self.con.execute("CREATE TABLE if not exists Player (username TEXT UNIQUE)")
 
             # Check cols of DB and compare to list of all cols in current version. Add missing
-            for col in columns:
+            for col in columns_champions:
                 col_name = col[0]
                 col_type = col[1]
                 try:
                     self.con.execute(f"ALTER TABLE Champions ADD COLUMN {col_name} {col_type}")
+                except sqlite3.OperationalError:
+                    # Column Already Exists
+                    pass
+
+            # Check cols of DB and compare to list of all cols in current version. Add missing
+            for col in columns_player:
+                col_name = col[0]
+                col_type = col[1]
+                try:
+                    self.con.execute(f"ALTER TABLE Player ADD COLUMN {col_name} {col_type}")
                 except sqlite3.OperationalError:
                     # Column Already Exists
                     pass
@@ -129,8 +145,7 @@ class Client:
         self.build_api(port, password)
 
         # TODO Update if patch of client doesnt match patch of app
-
-        self.update_all_champions()
+        self.update()
 
     def build_api(self, port, password):
         """
@@ -154,6 +169,7 @@ class Client:
         self.summonerInfo = self.call_api('/lol-summoner/v1/current-summoner')
         self.summonerId = self.summonerInfo["summonerId"]
         self.summonerName = self.summonerInfo["displayName"]
+
         self.currentPatch = self.call_api('/system/v1/builds')['version']
 
         # Client is loaded, but unsure if all requests can work yet. This code repeats until everything is loaded
@@ -210,6 +226,20 @@ class Client:
         """
         # Refresh which champions are owned
         self.update_all_champions()
+        self.update_summoner()
+
+    def update_summoner(self):
+        account_id = self.summonerInfo["accountId"]
+        summoner_Level = self.summonerInfo["summonerLevel"]
+
+        # Update player information
+        self.con.execute(f'INSERT or IGNORE INTO Player (username) VALUES (?)', (self.summonerName,))
+        self.add_to_database("Player", "username", self.summonerName, "summonerID", self.summonerId)
+        self.add_to_database("Player", "username", self.summonerName, "accountID", account_id)
+        self.add_to_database("Player", "username", self.summonerName, "level", summoner_Level)
+
+
+        pass
 
     def update_all_champions(self):
         """
@@ -236,11 +266,11 @@ class Client:
 
                 # Add ID to Database
                 champion_id = champion['id']
-                self.add_to_database("name", champion_name, "championID", champion_id)
+                self.add_to_database("Champions", "name", champion_name, "championID", champion_id)
 
                 # Add Owned Status to Database
                 owned = int(champion["ownership"]["owned"])
-                self.add_to_database("name", champion_name, "owned", owned)
+                self.add_to_database("Champions", "name", champion_name, "owned", owned)
         self.con.commit()
 
         # Update other columns
@@ -268,7 +298,7 @@ class Client:
         for champion in response_json:
             name = champion["localizations"][localization]["name"]
             ip_cost = str(champion["prices"][0]["cost"])
-            self.add_to_database("name", name, "cost", ip_cost)
+            self.add_to_database("Champions", "name", name, "cost", ip_cost)
         self.con.commit()
 
     def update_mastery_and_date(self):
@@ -289,8 +319,8 @@ class Client:
             mastery_level = champion['championLevel']
             # Last date mastery points were gained on a champion
             date = datetime.utcfromtimestamp(champion['lastPlayTime'] / 1e3).strftime('%Y-%m-%d %H:%M:%S')
-            self.add_to_database("championID", champion["championId"], "championMastery", mastery_level)
-            self.add_to_database("championID", champion["championId"], "lastPlayed", date)
+            self.add_to_database("Champions", "championID", champion["championId"], "championMastery", mastery_level)
+            self.add_to_database("Champions", "championID", champion["championId"], "lastPlayed", date)
         self.con.commit()
 
     def update_loot(self):
@@ -311,36 +341,46 @@ class Client:
         all_champs_shards = self.get_all_champs()
         all_champs_tokens = all_champs_shards.copy()
 
+        # For looking for event tokens
+        event_description_start = "Gained from purchasing event content or completing event missions."
+
         for item in response_json:
             # Champion Shards
             if item["displayCategories"] == "CHAMPION":
                 name = item["itemDesc"]
                 num_owned = item["count"]
-                self.add_to_database("name", name, "champShards", num_owned)
+                self.add_to_database("Champions", "name", name, "champShards", num_owned)
                 # Remove champion from list, as its value will be added
                 all_champs_shards.remove(name)
             # Mastery Tokens
             elif item["displayCategories"] == "CHEST" and item["type"] == "CHAMPION_TOKEN":
                 name = item["itemDesc"]
                 num_owned = item["count"]
-                self.add_to_database("name", name, "masteryTokens", num_owned)
+                self.add_to_database("Champions", "name", name, "masteryTokens", num_owned)
                 # Remove champion from list, as its value will be added
                 all_champs_tokens.remove(name)
+            # Event Tokens
+            # todo check next pass to see if this will work for all
+            elif item["localizedDescription"].find(event_description_start) != -1:
+                print("Has tokens")
+
+
 
         # All champions with no shards should be set to null
         for champ in all_champs_shards:
-            self.add_to_database("name", champ, "champShards", 0)
+            self.add_to_database("Champions", "name", champ, "champShards", 0)
 
         # All champions with no tokens should be set to null
         for champ in all_champs_tokens:
-            self.add_to_database("name", champ, "masteryTokens", 0)
+            self.add_to_database("Champions", "name", champ, "masteryTokens", 0)
 
         self.con.commit()
 
-    def add_to_database(self, row, comparison, column, data):
+    def add_to_database(self, table, row, comparison, column, data):
         """
         Adds information to champions.db
 
+        :param table: The name of the table to alter
         :param row: The row value to compare (usually name or championID)
         :param comparison: What to select from that row (usually the champion name or champion id)
         :param column: Column to insert the information into
@@ -361,7 +401,7 @@ class Client:
             comparison = "Null"
 
         # Execute update
-        self.con.execute(f'UPDATE Champions SET {column} = {data} WHERE {row} = {comparison}')
+        self.con.execute(f'UPDATE {table} SET {column} = {data} WHERE {row} = {comparison}')
 
     def get_all_champs(self):
         """
