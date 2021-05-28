@@ -57,7 +57,7 @@ class Client:
                              ("champShards", "INTEGER"), ("championMastery", "INTEGER"), ("masteryTokens", "INTEGER"),
                              ("lastPlayed", "TEXT")]
         columns_player = [("summonerID", "INTEGER"), ("accountID", "INTEGER"), ("level", "INTEGER"),
-                          ("blueEssence", "INTEGER")]
+                          ("blueEssence", "INTEGER"), ("riotPoints", "INTEGER")]
 
         with self.con:
             self.con.execute("CREATE TABLE if not exists Champions (name TEXT UNIQUE)")
@@ -230,16 +230,19 @@ class Client:
 
     def update_summoner(self):
         account_id = self.summonerInfo["accountId"]
-        summoner_Level = self.summonerInfo["summonerLevel"]
+        summoner_level = self.summonerInfo["summonerLevel"]
+
+        store_info = self.call_api("/lol-store/v1/wallet")
+        be = store_info["ip"]
+        rp = store_info["rp"]
 
         # Update player information
         self.con.execute(f'INSERT or IGNORE INTO Player (username) VALUES (?)', (self.summonerName,))
         self.add_to_database("Player", "username", self.summonerName, "summonerID", self.summonerId)
         self.add_to_database("Player", "username", self.summonerName, "accountID", account_id)
-        self.add_to_database("Player", "username", self.summonerName, "level", summoner_Level)
-
-
-        pass
+        self.add_to_database("Player", "username", self.summonerName, "level", summoner_level)
+        self.add_to_database("Player", "username", self.summonerName, "blueEssence", be)
+        self.add_to_database("Player", "username", self.summonerName, "riotPoints", rp)
 
     def update_all_champions(self):
         """
@@ -488,11 +491,11 @@ class Client:
         :return: Returns an formatted string
         """
 
-        # TODO factor in extra champ shards to cost
-
         # Default current_ip is 0 unless requested to use
         current_ip = 0
 
+        # TODO should the player table be referenced?
+        
         # If the program should subtract IP in the account, get the current_ip
         if subtract_owned:
             response_json = self.call_api("/lol-store/v1/wallet")
