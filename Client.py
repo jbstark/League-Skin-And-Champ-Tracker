@@ -61,7 +61,7 @@ class Client:
                              ("lastPlayed", "TEXT")]
         columns_player = [("summonerID", "INTEGER"), ("accountID", "INTEGER"), ("level", "INTEGER"),
                           ("blueEssence", "INTEGER"), ("riotPoints", "INTEGER"), ("eventName", "TEXT"),
-                          ("eventTokens", "INTEGER")]
+                          ("eventTokens", "INTEGER"), ("eventLootID", "INTEGER")]
 
         with self.con:
             self.con.execute("CREATE TABLE if not exists Champions (name TEXT UNIQUE)")
@@ -224,6 +224,14 @@ class Client:
 
         return json.loads(response.text)
 
+    def call_api_image(self, address):
+        if self.clientRunning is False:
+            return None
+        request = self.url + address
+        response = requests.get(request, verify=False, headers=self.header)
+
+        return response
+
     def update(self):
         """
         Updates the information from the client. Used for changes in status (champions, skins, etc.)
@@ -257,6 +265,8 @@ class Client:
         self.update_user_loot()
 
     def update_user_loot(self):
+
+        # TODO Should it run when they have no tokens for an event but the event is running. How?
         # Call the API
         response_json = self.call_api('/lol-loot/v1/player-loot')
 
@@ -276,6 +286,7 @@ class Client:
             if item["localizedDescription"].find(event_description_start) != -1:
                 token_name = item["localizedName"]
                 current_tokens = item["count"]
+                loot_id = item["lootId"]
 
                 # Add event name
                 self.add_to_database("Player", "username", self.summonerName, "eventName", token_name)
@@ -283,19 +294,27 @@ class Client:
                 # Add event tokens
                 self.add_to_database("Player", "username", self.summonerName, "eventTokens", current_tokens)
 
+                # Add event material name
+                self.add_to_database("Player", "username", self.summonerName, "eventLootID", loot_id)
+
                 event_running = True
+
         if not event_running:
             # Add event name
             self.add_to_database("Player", "username", self.summonerName, "eventName", None)
 
             # Add event tokens
             self.add_to_database("Player", "username", self.summonerName, "eventTokens", None)
+
+            # Add event material name
+            self.add_to_database("Player", "username", self.summonerName, "eventLootID", None)
+
         self.con.commit()
 
     def update_all_champions(self):
         """
         Gets champion information form LCU
-        Calls update_champion_costs(), update_mastery_and_date(), update_loot()
+        Calls update_champion_costs(), update_mastery_and_date(), update_champion_loot()
 
         :return:
         """
@@ -327,7 +346,7 @@ class Client:
         # Update other columns
         self.update_champion_costs()
         self.update_mastery_and_date()
-        self.update_loot()
+        self.update_champion_loot()
 
     def update_champion_costs(self):
         """
@@ -374,7 +393,7 @@ class Client:
             self.add_to_database("Champions", "championID", champion["championId"], "lastPlayed", date)
         self.con.commit()
 
-    def update_loot(self):
+    def update_champion_loot(self):
         """
         Updates champion shards and mastery tokens in champions.db
 
@@ -391,9 +410,6 @@ class Client:
         # Lists of all champions, takes off champions with values to then have all that should be 0
         all_champs_shards = self.get_all_champs()
         all_champs_tokens = all_champs_shards.copy()
-
-        # For looking for event tokens
-        event_description_start = "Gained from purchasing event content or completing event missions."
 
         for item in response_json:
             # Champion Shards
@@ -606,6 +622,29 @@ class Client:
         """
         all_data = self.con.execute("SELECT * FROM Champions")
         print(all_data.fetchall())
+
+    def get_missions(self):
+
+        response_json = self.call_api('/lol-missions/v1/missions')
+        event_missions = []
+
+        for mission in response_json:
+            if mission["seriesName"].find("PROJECT") != -1:
+                event_missions.append(mission)
+
+        return event_missions
+
+    def get_event_shop(self):
+        # Get the event ID
+        with self.con:
+            event_id = self.con.execute("SELECT eventLootID FROM Player")
+
+        if event_id is None:
+            return "No event currently running. Refresh to check for an event"
+
+        shop_items = self.call_api(f"/lol-loot/v1/recipes/initial-item/{event_id.fetchone()[0]}")
+        for item in shop_items:
+            print(item)
 
 
 def sort_champs(champ):
