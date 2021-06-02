@@ -635,6 +635,8 @@ class Client:
         return event_missions
 
     def get_event_shop(self):
+
+        shop = []
         # Get the event ID
         with self.con:
             event_id = self.con.execute("SELECT eventLootID FROM Player")
@@ -642,10 +644,18 @@ class Client:
         if event_id is None:
             return "No event currently running. Refresh to check for an event"
 
+        # Get all items in the event shop
         shop_items = self.call_api(f"/lol-loot/v1/recipes/initial-item/{event_id.fetchone()[0]}")
-        for item in shop_items:
-            print(item)
 
+        for item in shop_items:
+            # Get the image for the current item
+            """
+            image_path = item['imagePath']
+            image = self.call_api_image(image_path).content
+            """
+            # Delete comment and replace imagePath line with image to send byte array instead
+            shop.append((item["contextMenuText"], item['imagePath'], item["slots"][0]["quantity"]))
+        return sorted(shop, key=lambda t: (t[2]), reverse=True)
 
 def sort_champs(champ):
     """
