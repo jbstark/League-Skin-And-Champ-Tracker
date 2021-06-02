@@ -1,15 +1,21 @@
 from QtGUI import Ui_MainWindow
-from IconFrame import Ui_icon_frame
 from Client import Client
 from flowlayout import FlowLayout
 from PyQt5 import QtWidgets, QtCore, QtGui
 from datetime import datetime
 
 
-def create_new_icon_widget(name, filepath, parent=None):
-    icon_frame = QtWidgets.QFrame(parent)
+def create_new_icon_widget(name, api_call_path, client, width=160, height=200, parent=None):
+    image_data = client.call_api_image(api_call_path).content
+    image = QtGui.QImage()
+    image.loadFromData(image_data)
+
+    icon_frame = QtWidgets.QFrame(parent=parent)
     icon_frame.setObjectName("icon_frame")
     icon_frame.setCursor(QtGui.QCursor(QtCore.Qt.OpenHandCursor))
+    icon_frame.setFrameShape(QtWidgets.QFrame.Box)
+    icon_frame.setMinimumSize(width, height)
+    icon_frame.setMaximumSize(width, height)
 
     icon_frame_label = QtWidgets.QVBoxLayout(icon_frame)
     icon_frame_label.setObjectName("icon_frame_label")
@@ -22,7 +28,8 @@ def create_new_icon_widget(name, filepath, parent=None):
     sizePolicy.setHeightForWidth(image_label.sizePolicy().hasHeightForWidth())
     image_label.setSizePolicy(sizePolicy)
 
-    image_pixmap = QtGui.QPixmap(filepath).scaled(100, 100)
+    image_pixmap = QtGui.QPixmap()
+    image_pixmap = image_pixmap.fromImage(image).scaled(width-20, height-20-(height-width))
     image_label.setPixmap(image_pixmap)
     image_label.setAlignment(QtCore.Qt.AlignCenter)
     image_label.setObjectName("image_label")
@@ -38,7 +45,9 @@ def create_new_icon_widget(name, filepath, parent=None):
 
     name_label.setAlignment(QtCore.Qt.AlignCenter)
     name_label.setObjectName("name_label")
-    name_label.setText(name)
+    name_label.setWordWrap(True)
+    name_label.setText(name_label.fontMetrics().elidedText(name, QtCore.Qt.ElideRight, 100))
+    name_label.setToolTip(name)
     icon_frame_label.addWidget(name_label)
 
     _translate = QtCore.QCoreApplication.translate
@@ -67,17 +76,33 @@ class TrackerWindow(QtWidgets.QMainWindow):
         self.setup_refresh_label_timer()
         self.setup_refresh_button()
         self.setup_champs_tab_layout()
+        self.setup_current_event_tab_layout()
 
         self.last_refresh_time = None
 
         self.client = Client()
         self.refresh()
 
+        self.populate_current_event_tab()
+
+    def populate_current_event_tab(self):
+        event_shop = self.client.get_event_shop()
+        for item in event_shop:
+            self.ui.current_event_tab_scroll_area_widget_contents_layout.addWidget(
+                create_new_icon_widget(
+                    item[0], item[1], self.client, parent=self.ui.current_event_tab_scroll_area_widget_contents))
+
     def setup_champs_tab_layout(self):
         self.ui.champs_tab_scroll_area_widget_contents_layout = FlowLayout(
             self.ui.champs_tab_scroll_area_widget_contents)
         self.ui.champs_tab_scroll_area_widget_contents_layout.setObjectName(
             "champs_tab_scroll_area_widget_contents_layout")
+        
+    def setup_current_event_tab_layout(self):
+        self.ui.current_event_tab_scroll_area_widget_contents_layout = FlowLayout(
+            self.ui.current_event_tab_scroll_area_widget_contents)
+        self.ui.current_event_tab_scroll_area_widget_contents_layout.setObjectName(
+            "current_event_tab_scroll_area_widget_contents_layout")
 
     def setup_refresh_button(self):
         """
