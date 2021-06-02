@@ -1,5 +1,5 @@
 from Client import *
-
+from PIL import Image
 client = Client()
 
 print("Owned")
@@ -26,4 +26,15 @@ client.print_all_data()
 
 client.get_sorted_champs("lastPlayed", "desc", "name", "asc", True)
 
-print(client.call_api('/lol-game-data/assets/v1/champion-icons'))
+print("Missions")
+print(client.get_missions())
+
+print("Event Shop")
+client.get_event_shop()
+
+print("Image Test")
+img_data = client.call_api_image("/lol-game-data/assets/ASSETS/Loot/Project2021_PrestigePoints.png").content
+
+print(type(img_data))
+
+print(img_data)
