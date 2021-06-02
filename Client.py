@@ -649,12 +649,22 @@ class Client:
 
         for item in shop_items:
             # Get the image for the current item
+            image_path = item['imagePath']
+            # If there is no image path then it is a skin
+            if image_path == '':
+                skin_id = item["outputs"][0]["lootName"]
+                skin_id = ''.join(i for i in skin_id if i.isdigit())
+                response = self.call_api(f'/lol-store/v1/skins/{skin_id}')
+
+                print(response)
+                image_path = "/lol-game-data/assets/ASSETS/lol-shop" + response["iconUrl"]
+                print(image_path)
             """
             image_path = item['imagePath']
             image = self.call_api_image(image_path).content
             """
             # Delete comment and replace imagePath line with image to send byte array instead
-            shop.append((item["contextMenuText"], item['imagePath'], item["slots"][0]["quantity"]))
+            shop.append((item["contextMenuText"], image_path, item["slots"][0]["quantity"]))
         return sorted(shop, key=lambda t: (t[2]), reverse=True)
 
 def sort_champs(champ):
