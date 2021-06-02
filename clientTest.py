@@ -1,5 +1,4 @@
 from Client import *
-from PIL import Image
 client = Client()
 
 print("Owned")
