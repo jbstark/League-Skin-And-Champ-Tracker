@@ -3,7 +3,9 @@ import json
 import sqlite3
 import os
 import time
+import math
 from datetime import datetime
+
 import psutil
 import requests
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
@@ -11,8 +13,6 @@ from requests.packages.urllib3.exceptions import InsecureRequestWarning
 TIME_FORMAT = '%Y-%m-%d %H:%M:%S'
 
 # TODO when printing date convert from UTC to local time
-
-# TODO add player to Champions table to store all information
 
 
 class Client:
@@ -58,10 +58,10 @@ class Client:
         # All columns (besides name) in the DB. Add a tuple here to add a column
         columns_champions = [("championID", "INTEGER"), ("owned", "INTEGER"), ("cost", "INTEGER"),
                              ("champShards", "INTEGER"), ("championMastery", "INTEGER"), ("masteryTokens", "INTEGER"),
-                             ("lastPlayed", "TEXT")]
+                             ("lastPlayed", "INTEGER")]
         columns_player = [("summonerID", "INTEGER"), ("accountID", "INTEGER"), ("level", "INTEGER"),
                           ("blueEssence", "INTEGER"), ("riotPoints", "INTEGER"), ("eventName", "TEXT"),
-                          ("eventTokens", "INTEGER"), ("eventLootID", "INTEGER")]
+                          ("eventTokens", "INTEGER"), ("eventLootID", "INTEGER"), ("eventEndDate", "INTEGER")]
 
         with self.con:
             self.con.execute("CREATE TABLE if not exists Champions (name TEXT UNIQUE)")
@@ -287,6 +287,10 @@ class Client:
                 token_name = item["localizedName"]
                 current_tokens = item["count"]
                 loot_id = item["lootId"]
+                # To get rid of warnings
+                first_mission = self.get_missions()[0]
+                first_mission: dict
+                end_time = first_mission["endTime"]
 
                 # Add event name
                 self.add_to_database("Player", "username", self.summonerName, "eventName", token_name)
@@ -296,6 +300,9 @@ class Client:
 
                 # Add event material name
                 self.add_to_database("Player", "username", self.summonerName, "eventLootID", loot_id)
+
+                # Add event end date
+                self.add_to_database("Player", "username", self.summonerName, "eventEndDate", end_time)
 
                 event_running = True
 
@@ -388,7 +395,7 @@ class Client:
         for champion in response_json:
             mastery_level = champion['championLevel']
             # Last date mastery points were gained on a champion
-            date = datetime.utcfromtimestamp(champion['lastPlayTime'] / 1e3).strftime('%Y-%m-%d %H:%M:%S')
+            date = champion['lastPlayTime']
             self.add_to_database("Champions", "championID", champion["championId"], "championMastery", mastery_level)
             self.add_to_database("Champions", "championID", champion["championId"], "lastPlayed", date)
         self.con.commit()
@@ -625,17 +632,25 @@ class Client:
 
     def get_missions(self):
 
+        event_name = self.con.execute("SELECT eventName FROM Player").fetchone()[0]
+        # Splits the first word of the event token name. Hopefully this is the name used in other events
+        # TODO check for future events if this works
+        event_name = event_name.split(' ')[0]
+
+        if event_name is None:
+            return "No ongoing event"
+
         response_json = self.call_api('/lol-missions/v1/missions')
         event_missions = []
 
         for mission in response_json:
-            if mission["seriesName"].find("PROJECT") != -1:
+            if mission["seriesName"].find(event_name) != -1:
                 event_missions.append(mission)
-
         return event_missions
 
     def get_event_shop(self):
 
+        # TODO check for owned content for events (grey out image if you own the max or the amount wanted?)
         shop = []
         # Get the event ID
         with self.con:
@@ -665,6 +680,61 @@ class Client:
 
             shop.append((item["contextMenuText"], image_path, item["slots"][0]["quantity"]))
         return sorted(shop, key=lambda t: (t[2]), reverse=True)
+
+    def get_tokens_per_day(self, target):
+        """"
+        Returns the tokens needed per day if all missions are completed to reach the goal
+        """
+        # TODO check if pass is owned
+
+        # Get total tokens
+        total_tokens = self.con.execute("SELECT eventTokens FROM Player").fetchone()[0]
+
+        # Tokens from missions/buying the pass
+        event_name = self.con.execute("SELECT eventName FROM Player").fetchone()[0]
+        if event_name.find("WORLDS") != -1:
+            # TODO update for WORLDS 2021. Last years was not one easy value but this is closest
+            tokens_from_missions = 1815
+        else:
+            tokens_from_missions = 1500
+
+        # Subtract 200 tokens from buying pass
+        tokens_from_missions -= 200
+
+        # Get earned tokens from missions currently
+        earned_from_missions = 0
+
+        missions = self.get_missions()
+        # To get rid of warnings
+        mission: dict
+
+        for mission in missions:
+            # if the mission is completed
+            if mission["completedDate"] != -1:
+                # In case of multiple rewards like icon and tokens
+                for reward in mission["rewards"]:
+                    # If the reward is tokens and for this event
+                    if reward["description"].find("Tokens") != -1 and reward["description"].find(event_name) != -1:
+                        earned_from_missions += reward["quantity"]
+
+        # Subtract your earned to get total still to earn
+        tokens_from_missions -= earned_from_missions
+
+        # Tokens assuming you complete all future missions
+        total_tokens += tokens_from_missions
+
+        # TODO Should target be stored?
+        tokens_remaining = target - total_tokens
+
+        # Get the event end time as datetime
+        end_time = datetime.utcfromtimestamp(self.con.execute("SELECT eventEndDate FROM Player").fetchone()[0] // 1000)
+        # Get number of days left
+        hours_left = (end_time - datetime.utcnow()).total_seconds()/3600
+        # Tokens per hour times 24 for each hour in the day
+        tokens_per_day = math.ceil(tokens_remaining/hours_left * 24)
+
+        return tokens_per_day
+
 
 def sort_champs(champ):
     """
