@@ -37,3 +37,6 @@ img_data = client.call_api_image("/lol-game-data/assets/ASSETS/Loot/Project2021_
 print(type(img_data))
 
 print(img_data)
+
+client.get_tokens_per_day(2200)
+
