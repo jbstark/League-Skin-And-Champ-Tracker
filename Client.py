@@ -21,6 +21,7 @@ class Client:
         """
         Creates variables for find the client and lockfile. Then runs find client
         """
+
         # Disable InsecureRequestWarning as the connection to the client cannot be secure
         requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
@@ -49,43 +50,7 @@ class Client:
 
         self.check_client_running()
 
-    def check_db(self):
-
-        # Create file for each user
-        filename = "lol_" + self.summonerName + ".db"
-        self.con = sqlite3.connect(filename)
-
-        # All columns (besides name) in the DB. Add a tuple here to add a column
-        columns_champions = [("championID", "INTEGER"), ("owned", "INTEGER"), ("cost", "INTEGER"),
-                             ("champShards", "INTEGER"), ("championMastery", "INTEGER"), ("masteryTokens", "INTEGER"),
-                             ("lastPlayed", "INTEGER")]
-        columns_player = [("summonerID", "INTEGER"), ("accountID", "INTEGER"), ("level", "INTEGER"),
-                          ("blueEssence", "INTEGER"), ("riotPoints", "INTEGER"), ("eventName", "TEXT"),
-                          ("eventTokens", "INTEGER"), ("eventLootID", "INTEGER"), ("eventEndDate", "INTEGER")]
-
-        with self.con:
-            self.con.execute("CREATE TABLE if not exists Champions (name TEXT UNIQUE)")
-            self.con.execute("CREATE TABLE if not exists Player (username TEXT UNIQUE)")
-
-            # Check cols of DB and compare to list of all cols in current version. Add missing
-            for col in columns_champions:
-                col_name = col[0]
-                col_type = col[1]
-                try:
-                    self.con.execute(f"ALTER TABLE Champions ADD COLUMN {col_name} {col_type}")
-                except sqlite3.OperationalError:
-                    # Column Already Exists
-                    pass
-
-            # Check cols of DB and compare to list of all cols in current version. Add missing
-            for col in columns_player:
-                col_name = col[0]
-                col_type = col[1]
-                try:
-                    self.con.execute(f"ALTER TABLE Player ADD COLUMN {col_name} {col_type}")
-                except sqlite3.OperationalError:
-                    # Column Already Exists
-                    pass
+    # Client Checking Functions
 
     def check_client_running(self):
         """
@@ -153,6 +118,51 @@ class Client:
         # TODO Update if patch of client doesnt match patch of app
         self.update()
 
+    # Database and API management
+
+    def check_db(self):
+        """
+        Checks the database to make sure all the columns are there, adds if they are not
+
+        :return:
+        """
+
+        # Create file for each user
+        filename = "lol_" + self.summonerName + ".db"
+        self.con = sqlite3.connect(filename)
+
+        # All columns (besides name) in the DB. Add a tuple here to add a column
+        columns_champions = [("championID", "INTEGER"), ("owned", "INTEGER"), ("cost", "INTEGER"),
+                             ("champShards", "INTEGER"), ("championMastery", "INTEGER"), ("masteryTokens", "INTEGER"),
+                             ("lastPlayed", "INTEGER")]
+        columns_player = [("summonerID", "INTEGER"), ("accountID", "INTEGER"), ("level", "INTEGER"),
+                          ("blueEssence", "INTEGER"), ("riotPoints", "INTEGER"), ("eventName", "TEXT"),
+                          ("eventTokens", "INTEGER"), ("eventLootID", "INTEGER"), ("eventEndDate", "INTEGER")]
+
+        with self.con:
+            self.con.execute("CREATE TABLE if not exists Champions (name TEXT UNIQUE)")
+            self.con.execute("CREATE TABLE if not exists Player (username TEXT UNIQUE)")
+
+            # Check cols of DB and compare to list of all cols in current version. Add missing
+            for col in columns_champions:
+                col_name = col[0]
+                col_type = col[1]
+                try:
+                    self.con.execute(f"ALTER TABLE Champions ADD COLUMN {col_name} {col_type}")
+                except sqlite3.OperationalError:
+                    # Column Already Exists
+                    pass
+
+            # Check cols of DB and compare to list of all cols in current version. Add missing
+            for col in columns_player:
+                col_name = col[0]
+                col_type = col[1]
+                try:
+                    self.con.execute(f"ALTER TABLE Player ADD COLUMN {col_name} {col_type}")
+                except sqlite3.OperationalError:
+                    # Column Already Exists
+                    pass
+
     def build_api(self, port, password):
         """
         Sets up the data needed to call the API later.
@@ -161,6 +171,7 @@ class Client:
         :param password: The password in the lockfile
         :return:
         """
+
         # Get client API url
         self.url = 'https://127.0.0.1:' + port
 
@@ -217,6 +228,7 @@ class Client:
         :param address: The request to make to the API
         :return: the json of the response
         """
+
         if self.clientRunning is False:
             return None
         request = self.url + address
@@ -225,6 +237,12 @@ class Client:
         return json.loads(response.text)
 
     def call_api_image(self, address):
+        """
+
+        :param address: The request to make to the API
+        :return: the image from the call api (use .content to get the bytes string)
+        """
+
         if self.clientRunning is False:
             return None
         request = self.url + address
@@ -232,12 +250,42 @@ class Client:
 
         return response
 
+    def add_to_database(self, table, row, comparison, column, data):
+        """
+        Adds information to champions.db
+
+        :param table: The name of the table to alter
+        :param row: The row value to compare (usually name or championID)
+        :param comparison: What to select from that row (usually the champion name or champion id)
+        :param column: Column to insert the information into
+        :param data: Data to insert into the column
+        :return:
+        """
+
+        # Format data for update
+        if isinstance(data, str):
+            data = f'"{data}"'
+        elif data is None:
+            data = "Null"
+
+        # Format comparison for update
+        if isinstance(comparison, str):
+            comparison = f'"{comparison}"'
+        elif comparison is None:
+            comparison = "Null"
+
+        # Execute update
+        self.con.execute(f'UPDATE {table} SET {column} = {data} WHERE {row} = {comparison}')
+
+    # Update Functions
+
     def update(self):
         """
         Updates the information from the client. Used for changes in status (champions, skins, etc.)
 
         :return:
         """
+
         if self.clientRunning:
             # Refresh which champions are owned
             self.update_all_champions()
@@ -247,6 +295,11 @@ class Client:
             self.check_client_running()
 
     def update_summoner(self):
+        """
+        Updates information for the summoner table including loot
+        :return:
+        """
+
         account_id = self.summonerInfo["accountId"]
         summoner_level = self.summonerInfo["summonerLevel"]
 
@@ -265,6 +318,10 @@ class Client:
         self.update_user_loot()
 
     def update_user_loot(self):
+        """
+        Updates the user loot (loot tab) for events
+        :return:
+        """
 
         # TODO Should it run when they have no tokens for an event but the event is running. How?
         # Call the API
@@ -444,32 +501,7 @@ class Client:
 
         self.con.commit()
 
-    def add_to_database(self, table, row, comparison, column, data):
-        """
-        Adds information to champions.db
-
-        :param table: The name of the table to alter
-        :param row: The row value to compare (usually name or championID)
-        :param comparison: What to select from that row (usually the champion name or champion id)
-        :param column: Column to insert the information into
-        :param data: Data to insert into the column
-        :return:
-        """
-
-        # Format data for update
-        if isinstance(data, str):
-            data = f'"{data}"'
-        elif data is None:
-            data = "Null"
-
-        # Format comparison for update
-        if isinstance(comparison, str):
-            comparison = f'"{comparison}"'
-        elif comparison is None:
-            comparison = "Null"
-
-        # Execute update
-        self.con.execute(f'UPDATE {table} SET {column} = {data} WHERE {row} = {comparison}')
+    # Get functions
 
     def get_all_champs(self):
         """
@@ -534,6 +566,16 @@ class Client:
         return f'{result.fetchall()[0][0]:,}'
 
     def get_sorted_champs(self, primary_sort, primary_direction, secondary_sort, secondary_direction, show_unowned):
+        """
+        Get a list of sorted champions by priorities
+
+        :param primary_sort: First sort to use
+        :param primary_direction: asc/desc
+        :param secondary_sort: Second sort to break ties. Use same as primary for only one sort
+        :param secondary_direction: asc/desc
+        :param show_unowned: Boolean of whether to show unowned champions
+        :return: list of champions
+        """
 
         if show_unowned:
             result = self.con.execute("SELECT * FROM Champions WHERE owned = 1 ORDER BY " +
@@ -621,16 +663,12 @@ class Client:
             # Either no champs unowned, or user has enough IP
             return 0
 
-    def print_all_data(self):
-        """
-        print_all_data prints the Champions table in champions.db
-
-        :return:
-        """
-        all_data = self.con.execute("SELECT * FROM Champions")
-        print(all_data.fetchall())
-
     def get_missions(self):
+        """
+        Gets the missions for the event
+
+        :return: returns a list of dictionaries with each mission
+        """
 
         event_name = self.con.execute("SELECT eventName FROM Player").fetchone()[0]
         # Splits the first word of the event token name. Hopefully this is the name used in other events
@@ -649,6 +687,11 @@ class Client:
         return event_missions
 
     def get_event_shop(self):
+        """
+        Gets the event shop as a list of dictionaries for each item
+
+        :return: list of dictionaries of items in the shop
+        """
 
         # TODO check for owned content for events (grey out image if you own the max or the amount wanted?)
         shop = []
@@ -682,9 +725,12 @@ class Client:
         return sorted(shop, key=lambda t: (t[2]), reverse=True)
 
     def get_tokens_per_day(self, target):
-        """"
-        Returns the tokens needed per day if all missions are completed to reach the goal
         """
+        Returns the tokens per day needed to reach the target
+        :param target: the amount of tokens desired by the end of the event
+        :return: int of tokens needed per day
+        """
+
         # TODO check if pass is owned
 
         # Get total tokens
@@ -735,6 +781,19 @@ class Client:
 
         return tokens_per_day
 
+    # Print for viewing
+
+    def print_all_data(self):
+        """
+        print_all_data prints the Champions table in the current .db file
+
+        :return:
+        """
+        all_data_champion = self.con.execute("SELECT * FROM Champions")
+        print(all_data_champion.fetchall())
+
+        all_data_player = self.con.execute("SELECT * FROM Player")
+        print(all_data_player.fetchall())
 
 def sort_champs(champ):
     """
