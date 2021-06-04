@@ -743,15 +743,12 @@ class Client:
         event_name = self.con.execute("SELECT eventName FROM Player").fetchone()[0]
         if event_name.find("WORLDS") != -1:
             # TODO update for WORLDS 2021. Last years was not one easy value but this is closest
-            tokens_from_missions = 1815
+            tokens_from_missions_left = 1815
         else:
-            tokens_from_missions = 1500
+            tokens_from_missions_left = 1500
 
-        # Subtract 200 tokens from buying pass
-        tokens_from_missions -= 200
-
-        # Get earned tokens from missions currently
-        earned_from_missions = 0
+        #  Get earned tokens from missions, 200 tokens from buying pass
+        earned_from_missions = 200
 
         missions = self.get_missions()
         # To get rid of warnings
@@ -762,25 +759,38 @@ class Client:
             if mission["completedDate"] != -1:
                 # In case of multiple rewards like icon and tokens
                 for reward in mission["rewards"]:
+                    print(reward)
                     # If the reward is tokens and for this event
                     if reward["description"].find("Tokens") != -1 and reward["description"].find(event_name) != -1:
+                        print(mission)
                         earned_from_missions += reward["quantity"]
 
         # Subtract your earned to get total still to earn
-        tokens_from_missions -= earned_from_missions
+        tokens_from_missions_left -= earned_from_missions
+
+        print("From missions + buying pass:", earned_from_missions)
+
+        print("From games:", total_tokens - earned_from_missions)
 
         # Tokens assuming you complete all future missions
-        total_tokens += tokens_from_missions
+        total_tokens += tokens_from_missions_left
+
+        print("Tokens from all missions and currently played games:", total_tokens)
 
         # TODO Should target be stored?
         tokens_remaining = target - total_tokens
 
+        print("Tokens remaining:", tokens_remaining)
+
         # Get the event end time as datetime
         end_time = datetime.utcfromtimestamp(self.con.execute("SELECT eventEndDate FROM Player").fetchone()[0] // 1000)
         # Get number of days left
-        hours_left = (end_time - datetime.utcnow()).total_seconds()/3600
+        days_left = (end_time - datetime.utcnow()).total_seconds()/86400
+
+        print("Days left:", days_left)
+
         # Tokens per hour times 24 for each hour in the day
-        tokens_per_day = math.ceil(tokens_remaining/hours_left * 24)
+        tokens_per_day = round(tokens_remaining/days_left,3)
 
         return tokens_per_day
 
