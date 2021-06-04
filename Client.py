@@ -14,6 +14,8 @@ TIME_FORMAT = '%Y-%m-%d %H:%M:%S'
 
 # TODO when printing date convert from UTC to local time
 
+# TODO Fix things for client not connected and refresh button
+
 
 class Client:
 
@@ -344,10 +346,6 @@ class Client:
                 token_name = item["localizedName"]
                 current_tokens = item["count"]
                 loot_id = item["lootId"]
-                # To get rid of warnings
-                first_mission = self.get_missions()[0]
-                first_mission: dict
-                end_time = first_mission["endTime"]
 
                 # Add event name
                 self.add_to_database("Player", "username", self.summonerName, "eventName", token_name)
@@ -357,6 +355,11 @@ class Client:
 
                 # Add event material name
                 self.add_to_database("Player", "username", self.summonerName, "eventLootID", loot_id)
+
+                # To get rid of warnings
+                first_mission = self.get_missions()[0]
+                first_mission: dict
+                end_time = first_mission["endTime"]
 
                 # Add event end date
                 self.add_to_database("Player", "username", self.summonerName, "eventEndDate", end_time)
