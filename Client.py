@@ -3,7 +3,6 @@ import json
 import sqlite3
 import os
 import time
-import math
 from datetime import datetime
 
 import psutil
@@ -759,11 +758,13 @@ class Client:
         for mission in missions:
             # if the mission is completed
             if mission["completedDate"] != -1:
-                # In case of multiple rewards like icon and tokens
-                for reward in mission["rewards"]:
-                    # If the reward is tokens and for this event
-                    if reward["description"].find("Tokens") != -1 and reward["description"].find(event_name) != -1:
-                        earned_from_missions += reward["quantity"]
+                # If the mission is not the bank missions for winning/losing games
+                if mission["title"] != "Pass Token Bank Missions":
+                    # In case of multiple rewards like icon and tokens
+                    for reward in mission["rewards"]:
+                        # If the reward is tokens and for this event
+                        if reward["description"].find("Tokens") != -1 and reward["rewardFulfilled"] is True:
+                            earned_from_missions += reward["quantity"]
 
         # Subtract your earned to get total still to earn
         tokens_from_missions_left -= earned_from_missions
@@ -797,6 +798,7 @@ class Client:
 
         all_data_player = self.con.execute("SELECT * FROM Player")
         print(all_data_player.fetchall())
+
 
 def sort_champs(champ):
     """
