@@ -183,10 +183,28 @@ class Client:
         # Header for request
         self.header = {"Accept": "application/json", "Authorization": "Basic " + authorization_b64}
 
-        # Get summonerID of logged in user
-        self.summonerInfo = self.call_api('/lol-summoner/v1/current-summoner')
-        self.summonerId = self.summonerInfo["summonerId"]
-        self.summonerName = self.summonerInfo["displayName"]
+        # Check to see if client is loading
+        loading = True
+        num_seconds = 0
+
+        # While the client is loading
+        while loading:
+            # If over 15 seconds for client to load, quit
+            if num_seconds > 15:
+                self.clientRunning = False
+                return
+            # Wait 1 seconds then retry API call
+            time.sleep(1)
+            num_seconds += 1
+
+            try:
+                # Get summonerID of logged in user
+                self.summonerInfo = self.call_api('/lol-summoner/v1/current-summoner')
+                self.summonerId = self.summonerInfo["summonerId"]
+                self.summonerName = self.summonerInfo["displayName"]
+                loading = False
+            except (KeyError, requests.exceptions.ConnectionError):
+                pass
 
         self.currentPatch = self.call_api('/system/v1/builds')['version']
 
