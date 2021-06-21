@@ -1,10 +1,9 @@
 #Added 
 /dragontail/
-userOptions.json
-champions.db
-userData.db
 2021 Project Tokens.txt
 lol_*
+local_machine_info.db
+
 #Default python ignore
 
 # Byte-compiled / optimized / DLL files
@@ -136,5 +135,4 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
-/2021 Project Tokens.txt
-/userData.db
+
