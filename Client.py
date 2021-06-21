@@ -71,11 +71,10 @@ class Client:
                 pass
         # If league isn't running quit
         if not self.clientRunning:
-            print("Please refresh while the league of legends client is open")
+            return
 
         # If the client was found find the lockfile
-        if self.clientRunning:
-            self.find_lockfile()
+        self.find_lockfile()
 
     def find_lockfile(self):
         """
@@ -83,10 +82,6 @@ class Client:
 
         :return:
         """
-
-        # Return error if lockfile never opened
-        if not self.clientRunning:
-            return "Client not connected. Please refresh"
 
         # Find the lockfile
         for path in self.possibleDirectories:
@@ -100,10 +95,7 @@ class Client:
                 self.lockfileFound = True
             # League client is still opening, FAIL
             except FileNotFoundError:
-                pass
-        if self.lockfileFound is False:
-            print("Lockfile not found, Coding Error. Exiting")
-            exit()
+                exit("Lockfile not found")
 
         # Get the port and password form the lockfile
         port = file_contents[2]
