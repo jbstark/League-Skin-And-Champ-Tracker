@@ -87,7 +87,7 @@ class Client:
         for path in self.possibleDirectories:
             # gets path for all operating systems
             lockfile = os.path.join(path, r'lockfile')
-            
+
             # Try opening the lockfile
             try:
                 with open(lockfile, 'r') as f:
@@ -171,6 +171,10 @@ class Client:
         # Header for request
         self.header = {"Accept": "application/json", "Authorization": "Basic " + authorization_b64}
 
+        # Try connecting to the API
+        self.try_api()
+
+    def test_api(self):
         # Check to see if client is loading
         loading = True
         num_seconds = 0
@@ -609,7 +613,7 @@ class Client:
         current_ip = 0
 
         # TODO should the player table be referenced?
-        
+
         # If the program should subtract IP in the account, get the current_ip
         if subtract_owned:
             response_json = self.call_api("/lol-store/v1/wallet")
