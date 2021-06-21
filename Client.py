@@ -45,36 +45,59 @@ class Client:
 
         # Creates connection to champions.db
         self.con = None
+        self.con_machine = None
 
+        self.check_local_information()
         self.check_client_running()
 
     # Client Checking Functions
 
+    def check_local_information(self):
+        # Check local machine database
+        filename = "local_machine_info.db"
+        self.con_machine = sqlite3.connect(filename)
+
+        with self.con_machine:
+            self.con_machine.execute("CREATE TABLE if not exists Information (installPath TEXT UNIQUE)")
+
     def check_client_running(self):
         """
-        Checks to see if the client is running.
+        Checks to see if the client is running. First uses stored install directory
         If it is possibleDirectories is updated with the directory, and find_lockfile is run
         This should be where lockfile is
         If not, self.clientRunning will be false, and other functions will not run
 
         :return:
         """
+        # First check local machine info to see if there is a stored install path
+        stored_paths = self.con_machine.execute("SELECT installPath FROM Information")
+        for path in stored_paths:
+            self.possibleDirectories.add(path[0])
 
-        # See if league client process is running
+        # Look for the lockfile using the stored directories
+        self.find_lockfile()
+        # If the lockfile was found, we don't need psutil and can skip this part. If not found try to find process
+        if self.lockfileFound:
+            return
+
+        # If no lockfile was found using the stored install directories use psutil to find process
+        found_process = False
         for process in psutil.process_iter():
             try:
                 # Check if process name contains the given name string.
                 if process.name().lower() in self.clientNames:
-                    self.clientRunning = True
                     self.possibleDirectories.add(process.cwd())
+                    found_process = True
             except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
                 pass
-        # If league isn't running quit
-        if not self.clientRunning:
-            return
 
-        # If the client was found find the lockfile
-        self.find_lockfile()
+        if found_process:
+            # Try to find the lockfile
+            self.find_lockfile()
+
+            # Client was running, but Lockfile was not found. Error and quit
+            if self.lockfileFound is False:
+                exit("Lockfile not found")
 
     def find_lockfile(self):
         """
@@ -92,10 +115,20 @@ class Client:
             try:
                 with open(lockfile, 'r') as f:
                     file_contents = f.read().split(":")
+                # Lockfile is found
                 self.lockfileFound = True
+                self.clientRunning = True
+
+                # Update local machine info for faster startup in the future
+                with self.con_machine:
+                    self.con_machine.execute(f'INSERT or IGNORE INTO Information (installPath) VALUES (?)', (path,))
+                break
             # League client is still opening, FAIL
             except FileNotFoundError:
-                exit("Lockfile not found")
+                pass
+
+        if self.lockfileFound is False:
+            return
 
         # Get the port and password form the lockfile
         port = file_contents[2]
@@ -172,7 +205,7 @@ class Client:
         self.header = {"Accept": "application/json", "Authorization": "Basic " + authorization_b64}
 
         # Try connecting to the API
-        self.try_api()
+        self.test_api()
 
     def test_api(self):
         # Check to see if client is loading
@@ -199,6 +232,7 @@ class Client:
                 pass
 
         self.currentPatch = self.call_api('/system/v1/builds')['version']
+
 
         # Client is loaded, but unsure if all requests can work yet. This code repeats until everything is loaded
         # If the request errors out because the client is still loading
@@ -300,6 +334,7 @@ class Client:
         if self.clientRunning:
             # Refresh which champions are owned
             self.update_all_champions()
+            # Update information about the summoner
             self.update_summoner()
         else:
             # If the client is not running, tries again
@@ -311,9 +346,11 @@ class Client:
         :return:
         """
 
+        # Account info
         account_id = self.summonerInfo["accountId"]
         summoner_level = self.summonerInfo["summonerLevel"]
 
+        # Store Info
         store_info = self.call_api("/lol-store/v1/wallet")
         be = store_info["ip"]
         rp = store_info["rp"]
