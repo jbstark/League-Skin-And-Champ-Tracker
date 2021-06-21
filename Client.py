@@ -52,14 +52,6 @@ class Client:
 
     # Client Checking Functions
 
-    def check_local_information(self):
-        # Check local machine database
-        filename = "local_machine_info.db"
-        self.con_machine = sqlite3.connect(filename)
-
-        with self.con_machine:
-            self.con_machine.execute("CREATE TABLE if not exists Information (installPath TEXT UNIQUE)")
-
     def check_client_running(self):
         """
         Checks to see if the client is running. First uses stored install directory
@@ -141,6 +133,14 @@ class Client:
         self.update()
 
     # Database and API management
+
+    def check_local_information(self):
+        # Check local machine database
+        filename = "local_machine_info.db"
+        self.con_machine = sqlite3.connect(filename)
+
+        with self.con_machine:
+            self.con_machine.execute("CREATE TABLE if not exists Information (installPath TEXT UNIQUE)")
 
     def check_db(self):
         """
@@ -232,7 +232,6 @@ class Client:
                 pass
 
         self.currentPatch = self.call_api('/system/v1/builds')['version']
-
 
         # Client is loaded, but unsure if all requests can work yet. This code repeats until everything is loaded
         # If the request errors out because the client is still loading
@@ -402,7 +401,7 @@ class Client:
                 self.add_to_database("Player", "username", self.summonerName, "eventLootID", loot_id)
 
                 # To get rid of warnings
-                first_mission = self.get_missions()[0]
+                first_mission = self.get_event_missions()[0]
                 first_mission: dict
                 end_time = first_mission["endTime"]
 
@@ -711,7 +710,7 @@ class Client:
             # Either no champs unowned, or user has enough IP
             return 0
 
-    def get_missions(self):
+    def get_event_missions(self):
         """
         Gets the missions for the event
 
@@ -794,7 +793,7 @@ class Client:
         #  Get earned tokens from missions, 200 tokens from buying pass
         earned_from_missions = 200
 
-        missions = self.get_missions()
+        missions = self.get_event_missions()
         # To get rid of warnings
         mission: dict
 
@@ -827,20 +826,6 @@ class Client:
         tokens_per_day = round(tokens_remaining/days_left, 3)
 
         return tokens_per_day
-
-    # Print for viewing
-
-    def print_all_data(self):
-        """
-        print_all_data prints the Champions table in the current .db file
-
-        :return:
-        """
-        all_data_champion = self.con.execute("SELECT * FROM Champions")
-        print(all_data_champion.fetchall())
-
-        all_data_player = self.con.execute("SELECT * FROM Player")
-        print(all_data_player.fetchall())
 
 
 def sort_champs(champ):
