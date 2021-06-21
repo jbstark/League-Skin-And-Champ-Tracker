@@ -11,6 +11,7 @@ Currently there are no downloads for compiled versions, but you can clone the re
 
 <strong>Requirements</strong><br/>
 The project is coded in python, and should be ran with python 3.8
+
 The project currently requires some libraries to run.
 - psutil (to look for a running league process)
 - requests (to query the league client api)
