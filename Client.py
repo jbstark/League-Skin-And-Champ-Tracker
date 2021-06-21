@@ -21,6 +21,11 @@ class Client:
         Creates variables for find the client and lockfile. Then runs find client
         """
 
+        # Create Data Folder for storing information
+        self.data_folder_name = "data"
+        if not os.path.exists(self.data_folder_name):
+            os.makedirs(self.data_folder_name)
+
         # Disable InsecureRequestWarning as the connection to the client cannot be secure
         requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
@@ -136,8 +141,10 @@ class Client:
 
     def check_local_information(self):
         # Check local machine database
-        filename = "local_machine_info.db"
-        self.con_machine = sqlite3.connect(filename)
+        path = os.path.join(self.data_folder_name, r'local_machine_info.db')
+
+        # filename = "local_machine_info.db"
+        self.con_machine = sqlite3.connect(path)
 
         with self.con_machine:
             self.con_machine.execute("CREATE TABLE if not exists Information (installPath TEXT UNIQUE)")
@@ -151,7 +158,8 @@ class Client:
 
         # Create file for each user
         filename = "lol_" + self.summonerName + ".db"
-        self.con = sqlite3.connect(filename)
+        path = os.path.join(self.data_folder_name, f'{filename}')
+        self.con = sqlite3.connect(path)
 
         # All columns (besides name) in the DB. Add a tuple here to add a column
         columns_champions = [("championID", "INTEGER"), ("owned", "INTEGER"), ("cost", "INTEGER"),
