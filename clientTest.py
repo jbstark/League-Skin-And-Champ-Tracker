@@ -29,7 +29,7 @@ print("\n", "Champions by most recent played")
 client.get_sorted_champs("lastPlayed", "desc", "name", "asc", True)
 
 print("\n", "Missions")
-print(client.get_missions())
+print(client.get_event_missions())
 
 print("\n", "Event Shop")
 print(client.get_event_shop())
