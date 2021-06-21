@@ -1,6 +1,9 @@
 from Client import *
 client = Client()
 
+if not client.clientRunning:
+    exit("Client not running")
+
 print("Owned")
 print(client.get_champs(True))
 print("Num Owned:", client.get_num_champs(True), "\n")
