@@ -13,8 +13,6 @@ TIME_FORMAT = '%Y-%m-%d %H:%M:%S'
 
 # TODO when printing date convert from UTC to local time
 
-# TODO Fix things for client not connected and refresh button
-
 
 class Client:
 
@@ -28,7 +26,6 @@ class Client:
 
         # Variables for clientRunning
         self.clientRunning = False
-        # TODO add process linux? (How does wine work)
         self.clientNames = ["leagueclientuxrender.exe", "leagueclientux"]
         self.possibleDirectories = set()
 
@@ -116,7 +113,6 @@ class Client:
 
         self.check_db()
 
-        # TODO Update if patch of client doesnt match patch of app
         self.update()
 
     # Database and API management
@@ -358,7 +354,6 @@ class Client:
 
         for item in response_json:
             # Event Tokens
-            # todo check next pass to see if this will work for all
             if item["localizedDescription"].find(event_description_start) != -1:
                 token_name = item["localizedName"]
                 current_tokens = item["count"]
@@ -692,7 +687,6 @@ class Client:
 
         event_name = self.con.execute("SELECT eventName FROM Player").fetchone()[0]
         # Splits the first word of the event token name. Hopefully this is the name used in other events
-        # TODO check for future events if this works
         event_name = event_name.split(' ')[0]
 
         if event_name is None:
@@ -737,7 +731,6 @@ class Client:
                 skin_info = self.call_api(f'/lol-store/v1/skins/{skin_id}')
                 champ_id = skin_info["itemRequirements"][0]["itemId"]
 
-                # TODO check to make sure this works for next pass
                 # Make the image_path
                 image_path = f"/lol-game-data/assets/v1/champion-tiles/{champ_id}/{skin_id}.jpg"
 
@@ -761,7 +754,6 @@ class Client:
         # Tokens from missions/buying the pass
         event_name = self.con.execute("SELECT eventName FROM Player").fetchone()[0]
         if event_name.find("WORLDS") != -1:
-            # TODO update for WORLDS 2021. Last years was not one easy value but this is closest
             tokens_from_missions_left = 1815
         else:
             tokens_from_missions_left = 1500
