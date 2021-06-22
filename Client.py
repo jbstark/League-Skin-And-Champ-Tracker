@@ -135,8 +135,6 @@ class Client:
 
         self.check_db()
 
-        self.update()
-
     # Database and API management
 
     def check_local_information(self):
@@ -216,6 +214,10 @@ class Client:
         self.test_api()
 
     def test_api(self):
+        """
+        Client has multiple loading phases, as plugins load. This waits until the plugins are active
+        :return:
+        """
         # Check to see if client is loading
         loading = True
         num_seconds = 0
