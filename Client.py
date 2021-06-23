@@ -33,6 +33,7 @@ class Client:
         self.clientRunning = False
         self.clientNames = ["leagueclientuxrender.exe", "leagueclientux"]
         self.possibleDirectories = set()
+        self.currentDirectory = None
 
         # Variables needed for lockfile
         self.url = None
@@ -115,6 +116,7 @@ class Client:
                 # Lockfile is found
                 self.lockfileFound = True
                 self.clientRunning = True
+                self.currentDirectory = lockfile
 
                 # Update local machine info for faster startup in the future
                 with self.con_machine:
@@ -227,6 +229,7 @@ class Client:
             # If over 15 seconds for client to load, quit
             if num_seconds > 15:
                 self.clientRunning = False
+                self.lockfileFound = False
                 return
             # Wait 1 seconds then retry API call
             time.sleep(1)
@@ -237,15 +240,13 @@ class Client:
                 self.summonerInfo = self.call_api('/lol-summoner/v1/current-summoner')
                 self.summonerId = self.summonerInfo["summonerId"]
                 self.summonerName = self.summonerInfo["displayName"]
+                self.currentPatch = self.call_api('/system/v1/builds')['version']
+
+                # Get a response to see if parts of the client ares still loading
+                response = self.call_api(f'/lol-champions/v1/inventories/{self.summonerId}/champions-minimal')
                 loading = False
             except (KeyError, requests.exceptions.ConnectionError):
                 pass
-
-        self.currentPatch = self.call_api('/system/v1/builds')['version']
-
-        # Client is loaded, but unsure if all requests can work yet. This code repeats until everything is loaded
-        # If the request errors out because the client is still loading
-        response = self.call_api(f'/lol-champions/v1/inventories/{self.summonerId}/champions-minimal')
 
         try:
             # If the client errors, it is still loading
@@ -258,7 +259,8 @@ class Client:
                 while loading:
                     # If over 15 seconds for client to load, quit
                     if num_seconds > 15:
-                        exit()
+                        self.clientRunning = False
+                        self.lockfileFound = False
                     # Wait 1 seconds then retry API call
                     time.sleep(1)
                     num_seconds += 1
