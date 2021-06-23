@@ -6,19 +6,62 @@ from datetime import datetime
 from PyQt5 import QtTest
 
 
-class SidebarWidget(QtWidgets.QFrame):
-    def __init__(self, tokens_per_day=0, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+class CurrentEventDetailsWidget(QtWidgets.QWidget):
+    def __init__(self, client, parent=None, *args, **kwargs):
+        super().__init__(parent=parent, *args, **kwargs)
+
+        self.setObjectName("current_event_details_widget")
         
-        self.setFrameShape(QtWidgets.QFrame.Box)
-        self.sidebar_widget_qvboxlayout = QtWidgets.QVBoxLayout(self)
+        self.current_event_widget_vertical_layout = QtWidgets.QVBoxLayout(self)
+        self.current_event_widget_vertical_layout.setObjectName("current_event_widget_vertical_layout")
         
-        self.text_label = QtWidgets.QLabel(self)
-        self.update_text(tokens_per_day)
-        self.sidebar_widget_qvboxlayout.addWidget(self.text_label)
-    
-    def update_text(self, tokens_per_day):
-        self.text_label.setText(f"Target tokens per day: {tokens_per_day}\n")
+        self.token_target_frame = QtWidgets.QFrame(self)
+        self.token_target_frame.setFrameShape(QtWidgets.QFrame.StyledPanel)
+        self.token_target_frame.setFrameShadow(QtWidgets.QFrame.Raised)
+        self.token_target_frame.setObjectName("token_target_frame")
+        
+        self.token_target_frame_horizontal_layout = QtWidgets.QHBoxLayout(self.token_target_frame)
+        self.token_target_frame_horizontal_layout.setObjectName("token_target_frame_horizontal_layout")
+        
+        self.token_target_frame_label = QtWidgets.QLabel(self.token_target_frame)
+        self.token_target_frame_label.setObjectName("token_target_frame_label")
+        self.token_target_frame_horizontal_layout.addWidget(self.token_target_frame_label)
+        
+        self.token_target_frame_input_lineedit = QtWidgets.QLineEdit(self.token_target_frame)
+        self.token_target_frame_input_lineedit.setObjectName("token_target_frame_input_lineedit")
+        self.token_target_frame_input_lineedit.setValidator(
+            QtGui.QIntValidator(0, (2**31)-1, self.token_target_frame_input_lineedit.parent()))
+        self.token_target_frame_horizontal_layout.addWidget(self.token_target_frame_input_lineedit)
+        
+        self.current_event_widget_vertical_layout.addWidget(self.token_target_frame)
+        
+        self.current_event_current_tokens_label = QtWidgets.QLabel(self)
+        self.current_event_current_tokens_label.setObjectName("current_event_current_tokens_label")
+        self.current_event_widget_vertical_layout.addWidget(self.current_event_current_tokens_label)
+        
+        self.current_event_target_tokens_per_day_label = QtWidgets.QLabel(self)
+        self.current_event_target_tokens_per_day_label.setObjectName("current_event_target_tokens_per_day_label")
+        self.current_event_widget_vertical_layout.addWidget(self.current_event_target_tokens_per_day_label)
+
+        _translate = QtCore.QCoreApplication.translate
+        self.setWindowTitle(_translate("current_event_details_widget", "Form"))
+        self.token_target_frame_label.setText(_translate("current_event_details_widget", "Enter target tokens:"))
+        self.current_event_current_tokens_label.setText(_translate("current_event_details_widget",
+                                                                   f"Current tokens: {client.get_current_tokens()}"))
+        self.current_event_target_tokens_per_day_label.setText(
+            _translate("current_event_details_widget", "Tokens needed per day: "))
+        
+        QtCore.QMetaObject.connectSlotsByName(self)
+        
+        self.token_target_frame_input_lineedit.textEdited.connect(lambda: self.text_edited(client))
+        
+    def text_edited(self, client):
+        new_text = self.token_target_frame_input_lineedit.text()
+        try:
+            self.current_event_target_tokens_per_day_label.setText(
+                f"Tokens needed per day: {client.get_tokens_per_day(int(new_text))}")
+        except ValueError:
+            self.current_event_target_tokens_per_day_label.setText("Tokens needed per day: ")
 
 
 class IconWidget(QtWidgets.QFrame):
@@ -120,33 +163,32 @@ class TrackerWindow(QtWidgets.QMainWindow):
         :param kwargs: Keyword Arguments
         """
         super().__init__(*args, **kwargs)
-        
+    
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
-        
-        self.ui.tab_widget.currentChanged.connect(self.new_tab_selected())
-        
+    
         self.setup_refresh_label_timer()
         self.setup_refresh_button()
         self.setup_champs_tab_layout()
         self.setup_current_event_tab_layout()
-        
+    
         self.last_refresh_time = None
-        
+    
         self.client = Client()
         while not self.client.clientRunning:
             create_client_refresh_messageBox(True, self.ui.centralwidget).exec_()
             self.client.check_client_running()
         self.refresh()
-        
+    
+        self.ui.tab_widget.currentChanged.connect(self.new_tab_selected)
         self.populate_current_event_tab()
     
     def new_tab_selected(self):
         if self.ui.tab_widget.tabText(self.ui.tab_widget.currentIndex()) == "Current Event":
-            self.current_event_sidebar()
+            self.ui.settings_vertical_layout.addWidget(self.current_event_sidebar())
     
     def current_event_sidebar(self):
-        return SidebarWidget(self.client.get_tokens_per_day())
+        return CurrentEventDetailsWidget(self.client, parent=self.ui.settings_widget)
     
     def populate_current_event_tab(self):
         """Adds all purchasable item widgets to the current event tab."""
