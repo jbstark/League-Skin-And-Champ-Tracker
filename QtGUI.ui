@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>878</width>
-    <height>548</height>
+    <height>536</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -27,6 +27,125 @@
        <enum>QFrame::Raised</enum>
       </property>
       <layout class="QGridLayout" name="main_frame_grid_layout">
+       <property name="bottomMargin">
+        <number>0</number>
+       </property>
+       <item row="0" column="1">
+        <widget class="QTabWidget" name="tab_widget">
+         <property name="minimumSize">
+          <size>
+           <width>400</width>
+           <height>400</height>
+          </size>
+         </property>
+         <property name="font">
+          <font>
+           <weight>50</weight>
+           <bold>false</bold>
+          </font>
+         </property>
+         <property name="currentIndex">
+          <number>2</number>
+         </property>
+         <widget class="QWidget" name="champs_tab">
+          <property name="font">
+           <font>
+            <weight>50</weight>
+            <bold>false</bold>
+           </font>
+          </property>
+          <property name="toolTip">
+           <string/>
+          </property>
+          <attribute name="title">
+           <string>Champions</string>
+          </attribute>
+          <layout class="QGridLayout" name="champs_tab_grid_layout">
+           <item row="0" column="0">
+            <widget class="QScrollArea" name="champs_tab_scroll_area">
+             <property name="verticalScrollBarPolicy">
+              <enum>Qt::ScrollBarAsNeeded</enum>
+             </property>
+             <property name="horizontalScrollBarPolicy">
+              <enum>Qt::ScrollBarAlwaysOff</enum>
+             </property>
+             <property name="widgetResizable">
+              <bool>true</bool>
+             </property>
+             <widget class="QWidget" name="champs_tab_scroll_area_widget_contents">
+              <property name="geometry">
+               <rect>
+                <x>0</x>
+                <y>0</y>
+                <width>508</width>
+                <height>432</height>
+               </rect>
+              </property>
+             </widget>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+         <widget class="QWidget" name="skins_tab">
+          <attribute name="title">
+           <string>Skins</string>
+          </attribute>
+          <layout class="QGridLayout" name="skins_tab_grid_layout">
+           <item row="0" column="0">
+            <widget class="QScrollArea" name="skins_tab_scroll_area">
+             <property name="widgetResizable">
+              <bool>true</bool>
+             </property>
+             <widget class="QWidget" name="skins_tab_scroll_area_widget_contents">
+              <property name="geometry">
+               <rect>
+                <x>0</x>
+                <y>0</y>
+                <width>508</width>
+                <height>432</height>
+               </rect>
+              </property>
+             </widget>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+         <widget class="QWidget" name="current_event_tab">
+          <attribute name="title">
+           <string>Current Event</string>
+          </attribute>
+          <layout class="QGridLayout" name="current_event_tab_grid_layout">
+           <item row="0" column="0">
+            <widget class="QScrollArea" name="current_event_tab_scroll_area">
+             <property name="font">
+              <font>
+               <weight>50</weight>
+               <bold>false</bold>
+               <stylestrategy>PreferAntialias</stylestrategy>
+              </font>
+             </property>
+             <property name="widgetResizable">
+              <bool>true</bool>
+             </property>
+             <widget class="QWidget" name="current_event_tab_scroll_area_widget_contents">
+              <property name="geometry">
+               <rect>
+                <x>0</x>
+                <y>0</y>
+                <width>508</width>
+                <height>420</height>
+               </rect>
+              </property>
+              <property name="styleSheet">
+               <string notr="true"/>
+              </property>
+             </widget>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+        </widget>
+       </item>
        <item row="0" column="0" alignment="Qt::AlignTop">
         <widget class="QWidget" name="settings_widget" native="true">
          <property name="sizePolicy">
@@ -218,122 +337,6 @@
            </widget>
           </item>
          </layout>
-        </widget>
-       </item>
-       <item row="0" column="1">
-        <widget class="QTabWidget" name="tab_widget">
-         <property name="minimumSize">
-          <size>
-           <width>400</width>
-           <height>400</height>
-          </size>
-         </property>
-         <property name="font">
-          <font>
-           <weight>50</weight>
-           <bold>false</bold>
-          </font>
-         </property>
-         <property name="currentIndex">
-          <number>2</number>
-         </property>
-         <widget class="QWidget" name="champs_tab">
-          <property name="font">
-           <font>
-            <weight>50</weight>
-            <bold>false</bold>
-           </font>
-          </property>
-          <property name="toolTip">
-           <string/>
-          </property>
-          <attribute name="title">
-           <string>Champions</string>
-          </attribute>
-          <layout class="QGridLayout" name="champs_tab_grid_layout">
-           <item row="0" column="0">
-            <widget class="QScrollArea" name="champs_tab_scroll_area">
-             <property name="verticalScrollBarPolicy">
-              <enum>Qt::ScrollBarAsNeeded</enum>
-             </property>
-             <property name="horizontalScrollBarPolicy">
-              <enum>Qt::ScrollBarAlwaysOff</enum>
-             </property>
-             <property name="widgetResizable">
-              <bool>true</bool>
-             </property>
-             <widget class="QWidget" name="champs_tab_scroll_area_widget_contents">
-              <property name="geometry">
-               <rect>
-                <x>0</x>
-                <y>0</y>
-                <width>505</width>
-                <height>423</height>
-               </rect>
-              </property>
-             </widget>
-            </widget>
-           </item>
-          </layout>
-         </widget>
-         <widget class="QWidget" name="skins_tab">
-          <attribute name="title">
-           <string>Skins</string>
-          </attribute>
-          <layout class="QGridLayout" name="skins_tab_grid_layout">
-           <item row="0" column="0">
-            <widget class="QScrollArea" name="skins_tab_scroll_area">
-             <property name="widgetResizable">
-              <bool>true</bool>
-             </property>
-             <widget class="QWidget" name="skins_tab_scroll_area_widget_contents">
-              <property name="geometry">
-               <rect>
-                <x>0</x>
-                <y>0</y>
-                <width>505</width>
-                <height>423</height>
-               </rect>
-              </property>
-             </widget>
-            </widget>
-           </item>
-          </layout>
-         </widget>
-         <widget class="QWidget" name="current_event_tab">
-          <attribute name="title">
-           <string>Current Event</string>
-          </attribute>
-          <layout class="QGridLayout" name="current_event_tab_grid_layout">
-           <item row="0" column="0">
-            <widget class="QScrollArea" name="current_event_tab_scroll_area">
-             <property name="font">
-              <font>
-               <weight>50</weight>
-               <bold>false</bold>
-               <stylestrategy>PreferAntialias</stylestrategy>
-              </font>
-             </property>
-             <property name="widgetResizable">
-              <bool>true</bool>
-             </property>
-             <widget class="QWidget" name="current_event_tab_scroll_area_widget_contents">
-              <property name="geometry">
-               <rect>
-                <x>0</x>
-                <y>0</y>
-                <width>508</width>
-                <height>423</height>
-               </rect>
-              </property>
-              <property name="styleSheet">
-               <string notr="true"/>
-              </property>
-             </widget>
-            </widget>
-           </item>
-          </layout>
-         </widget>
         </widget>
        </item>
       </layout>
