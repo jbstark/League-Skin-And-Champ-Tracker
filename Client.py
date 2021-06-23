@@ -242,12 +242,12 @@ class Client:
                 self.summonerName = self.summonerInfo["displayName"]
                 self.currentPatch = self.call_api('/system/v1/builds')['version']
 
-                # Get a response to see if parts of the client ares still loading
-                response = self.call_api(f'/lol-champions/v1/inventories/{self.summonerId}/champions-minimal')
                 loading = False
             except (KeyError, requests.exceptions.ConnectionError):
                 pass
 
+        # Get a response to see if parts of the client ares still loading
+        response = self.call_api(f'/lol-champions/v1/inventories/{self.summonerId}/champions-minimal')
         try:
             # If the client errors, it is still loading
             if response['message'] == 'Champion data has not yet been received.':
@@ -793,7 +793,7 @@ class Client:
         self.update_user_loot()
 
         # Get total tokens
-        total_tokens = self.con.execute("SELECT eventTokens FROM Player").fetchone()[0]
+        total_tokens = self.get_current_tokens()
 
         # Tokens from missions/buying the pass
         event_name = self.con.execute("SELECT eventName FROM Player").fetchone()[0]
@@ -838,6 +838,9 @@ class Client:
         tokens_per_day = round(tokens_remaining/days_left, 3)
 
         return tokens_per_day
+
+    def get_current_tokens(self):
+        return self.con.execute("SELECT eventTokens FROM Player").fetchone()[0]
 
 
 def sort_champs(champ):
