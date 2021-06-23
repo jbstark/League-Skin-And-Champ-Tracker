@@ -81,6 +81,10 @@ class Client:
         for path in stored_paths:
             self.possibleDirectories.add(path)
 
+        # If no possible directories stored, use psutil ignoring user setting
+        if not self.possibleDirectories:
+            skip_psutil = False
+
         # Look for the lockfile using the stored directories
         self.find_lockfile()
 
@@ -128,25 +132,19 @@ class Client:
                 self.clientRunning = True
                 self.currentDirectory = lockfile
 
-                # Update local machine info for faster startup in the future
-                data_path = os.path.join(self.data_folder_name, r'local_machine_info.json')
-                with open(data_path, "r") as jsonFile:
-                    data = json.load(jsonFile)
-
                 # Get all previous install paths
-                install_directories = data["Install Directories"]
+                install_directories = self.settings["Install Directories"]
                 # Add current install path to list
                 install_directories.append(path)
-
                 # Create a set to remove duplicates
-                data["Install Directories"] = list(set(install_directories))
+                self.settings["Install Directories"] = list(set(install_directories))
 
-                # Update the settings to include new information
-                self.settings = data
+                # Create path for where the json file is stored
+                data_path = os.path.join(self.data_folder_name, r'local_machine_info.json')
 
                 # Write all install paths to the json file
                 with open(data_path, "w") as outfile:
-                    json.dump(data, outfile, indent=4)
+                    json.dump(self.settings, outfile, indent=4)
 
                 break
             # League client is still opening, FAIL
