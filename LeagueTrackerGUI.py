@@ -11,6 +11,8 @@ class CurrentEventDetailsWidget(QtWidgets.QWidget):
         super().__init__(parent=parent, *args, **kwargs)
 
         self.setObjectName("current_event_details_widget")
+        #self.setMinimumSize(300, 300)
+        self.setMaximumSize(300, 300)
         
         self.current_event_widget_vertical_layout = QtWidgets.QVBoxLayout(self)
         self.current_event_widget_vertical_layout.setObjectName("current_event_widget_vertical_layout")
@@ -125,6 +127,7 @@ def create_client_refresh_messageBox(firstOpen, parent=None):
     """
     Creates a QMessageBox popup window allowing the user to either close the program or try to find the client process.
 
+    :param firstOpen:
     :param parent: Qt object containing the message box.
     :return: A QMessageBox window object with a message and 'Retry' and 'Close' buttons.
     """
@@ -181,14 +184,19 @@ class TrackerWindow(QtWidgets.QMainWindow):
         self.refresh()
     
         self.ui.tab_widget.currentChanged.connect(self.new_tab_selected)
+        self.new_tab_selected()
         self.populate_current_event_tab()
     
     def new_tab_selected(self):
         if self.ui.tab_widget.tabText(self.ui.tab_widget.currentIndex()) == "Current Event":
-            self.ui.settings_vertical_layout.addWidget(self.current_event_sidebar())
+            self.ui.left_panel_frame_vertical_layout.addWidget(self.current_event_sidebar(),
+                                                               alignment=QtCore.Qt.AlignLeft | QtCore.Qt.AlignTop)
+        else:
+            self.ui.settings_vertical_layout.removeWidget(self.ui.settings_widget.findChild(
+                QtWidgets.QWidget, "current_event_details_widget"))
     
     def current_event_sidebar(self):
-        return CurrentEventDetailsWidget(self.client, parent=self.ui.settings_widget)
+        return CurrentEventDetailsWidget(self.client, parent=self.ui.left_panel_frame)
     
     def populate_current_event_tab(self):
         """Adds all purchasable item widgets to the current event tab."""

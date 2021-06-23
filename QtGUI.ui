@@ -6,9 +6,15 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>878</width>
-    <height>536</height>
+    <width>1014</width>
+    <height>687</height>
    </rect>
+  </property>
+  <property name="sizePolicy">
+   <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+    <horstretch>1</horstretch>
+    <verstretch>0</verstretch>
+   </sizepolicy>
   </property>
   <property name="windowTitle">
    <string>League Tracker</string>
@@ -26,11 +32,225 @@
       <property name="frameShadow">
        <enum>QFrame::Raised</enum>
       </property>
-      <layout class="QGridLayout" name="main_frame_grid_layout">
+      <layout class="QHBoxLayout" name="horizontalLayout">
        <property name="bottomMargin">
         <number>0</number>
        </property>
-       <item row="0" column="1">
+       <item alignment="Qt::AlignHCenter|Qt::AlignTop">
+        <widget class="QFrame" name="left_panel_frame">
+         <property name="minimumSize">
+          <size>
+           <width>0</width>
+           <height>0</height>
+          </size>
+         </property>
+         <property name="frameShape">
+          <enum>QFrame::StyledPanel</enum>
+         </property>
+         <property name="frameShadow">
+          <enum>QFrame::Raised</enum>
+         </property>
+         <layout class="QVBoxLayout" name="left_panel_frame_vertical_layout">
+          <property name="bottomMargin">
+           <number>0</number>
+          </property>
+          <item alignment="Qt::AlignHCenter|Qt::AlignTop">
+           <widget class="QWidget" name="settings_widget" native="true">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="minimumSize">
+             <size>
+              <width>300</width>
+              <height>200</height>
+             </size>
+            </property>
+            <property name="maximumSize">
+             <size>
+              <width>300</width>
+              <height>300</height>
+             </size>
+            </property>
+            <layout class="QVBoxLayout" name="settings_vertical_layout">
+             <item>
+              <widget class="QFrame" name="sort_frame">
+               <property name="frameShape">
+                <enum>QFrame::StyledPanel</enum>
+               </property>
+               <property name="frameShadow">
+                <enum>QFrame::Raised</enum>
+               </property>
+               <layout class="QFormLayout" name="sort_form_layout">
+                <item row="0" column="0">
+                 <widget class="QLabel" name="primary_sort_label">
+                  <property name="text">
+                   <string>Primary Sort:</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="1">
+                 <widget class="QComboBox" name="primary_sort_dropdown">
+                  <property name="editable">
+                   <bool>false</bool>
+                  </property>
+                  <property name="currentIndex">
+                   <number>0</number>
+                  </property>
+                  <item>
+                   <property name="text">
+                    <string>Alphabetical</string>
+                   </property>
+                  </item>
+                  <item>
+                   <property name="text">
+                    <string>Mastery</string>
+                   </property>
+                  </item>
+                  <item>
+                   <property name="text">
+                    <string>Cost</string>
+                   </property>
+                  </item>
+                  <item>
+                   <property name="text">
+                    <string>Release Date</string>
+                   </property>
+                  </item>
+                  <item>
+                   <property name="text">
+                    <string>Rarity</string>
+                   </property>
+                  </item>
+                 </widget>
+                </item>
+                <item row="1" column="0">
+                 <widget class="QLabel" name="secondary_sort_label">
+                  <property name="text">
+                   <string>Secondary Sort</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="1">
+                 <widget class="QComboBox" name="secondary_sort_dropdown">
+                  <property name="editable">
+                   <bool>false</bool>
+                  </property>
+                  <property name="currentIndex">
+                   <number>0</number>
+                  </property>
+                  <item>
+                   <property name="text">
+                    <string>Alphabetical</string>
+                   </property>
+                  </item>
+                  <item>
+                   <property name="text">
+                    <string>Mastery</string>
+                   </property>
+                  </item>
+                  <item>
+                   <property name="text">
+                    <string>Cost</string>
+                   </property>
+                  </item>
+                  <item>
+                   <property name="text">
+                    <string>Release Date</string>
+                   </property>
+                  </item>
+                  <item>
+                   <property name="text">
+                    <string>Rarity</string>
+                   </property>
+                  </item>
+                 </widget>
+                </item>
+                <item row="2" column="0">
+                 <widget class="QCheckBox" name="show_unowned_checkbox">
+                  <property name="text">
+                   <string>Show Unowned</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="3" column="0">
+                 <widget class="QLabel" name="last_refresh_label">
+                  <property name="text">
+                   <string>Last Refresh: Never</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="3" column="1">
+                 <widget class="QPushButton" name="refresh_button">
+                  <property name="maximumSize">
+                   <size>
+                    <width>50</width>
+                    <height>16777215</height>
+                   </size>
+                  </property>
+                  <property name="styleSheet">
+                   <string>0</string>
+                  </property>
+                  <property name="text">
+                   <string>Refresh</string>
+                  </property>
+                  <property name="checkable">
+                   <bool>false</bool>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+             </item>
+             <item>
+              <widget class="QWidget" name="stats_widget" native="true">
+               <property name="minimumSize">
+                <size>
+                 <width>0</width>
+                 <height>20</height>
+                </size>
+               </property>
+               <layout class="QFormLayout" name="stats_widget_layout">
+                <item row="0" column="0">
+                 <widget class="QLabel" name="num_champs_owned_label">
+                  <property name="text">
+                   <string>Number of Champions Owned:</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="0">
+                 <widget class="QLabel" name="max_blue_essence_needed_label">
+                  <property name="text">
+                   <string>Maximum Blue Essence Needed:</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="1">
+                 <widget class="QLabel" name="max_blue_essence_needed_value_label">
+                  <property name="text">
+                   <string>TextLabel</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="1">
+                 <widget class="QLabel" name="num_champs_owned_value_label">
+                  <property name="text">
+                   <string>TextLabel</string>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
         <widget class="QTabWidget" name="tab_widget">
          <property name="minimumSize">
           <size>
@@ -77,8 +297,8 @@
                <rect>
                 <x>0</x>
                 <y>0</y>
-                <width>508</width>
-                <height>432</height>
+                <width>624</width>
+                <height>571</height>
                </rect>
               </property>
              </widget>
@@ -101,8 +321,8 @@
                <rect>
                 <x>0</x>
                 <y>0</y>
-                <width>508</width>
-                <height>432</height>
+                <width>624</width>
+                <height>571</height>
                </rect>
               </property>
              </widget>
@@ -132,8 +352,8 @@
                <rect>
                 <x>0</x>
                 <y>0</y>
-                <width>508</width>
-                <height>420</height>
+                <width>624</width>
+                <height>571</height>
                </rect>
               </property>
               <property name="styleSheet">
@@ -146,199 +366,6 @@
          </widget>
         </widget>
        </item>
-       <item row="0" column="0" alignment="Qt::AlignTop">
-        <widget class="QWidget" name="settings_widget" native="true">
-         <property name="sizePolicy">
-          <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-           <horstretch>1</horstretch>
-           <verstretch>0</verstretch>
-          </sizepolicy>
-         </property>
-         <property name="minimumSize">
-          <size>
-           <width>300</width>
-           <height>100</height>
-          </size>
-         </property>
-         <property name="maximumSize">
-          <size>
-           <width>300</width>
-           <height>300</height>
-          </size>
-         </property>
-         <layout class="QVBoxLayout" name="settings_vertical_layout">
-          <item>
-           <widget class="QFrame" name="sort_frame">
-            <property name="frameShape">
-             <enum>QFrame::StyledPanel</enum>
-            </property>
-            <property name="frameShadow">
-             <enum>QFrame::Raised</enum>
-            </property>
-            <layout class="QFormLayout" name="sort_form_layout">
-             <item row="0" column="0">
-              <widget class="QLabel" name="primary_sort_label">
-               <property name="text">
-                <string>Primary Sort:</string>
-               </property>
-              </widget>
-             </item>
-             <item row="0" column="1">
-              <widget class="QComboBox" name="primary_sort_dropdown">
-               <property name="editable">
-                <bool>false</bool>
-               </property>
-               <property name="currentIndex">
-                <number>0</number>
-               </property>
-               <item>
-                <property name="text">
-                 <string>Alphabetical</string>
-                </property>
-               </item>
-               <item>
-                <property name="text">
-                 <string>Mastery</string>
-                </property>
-               </item>
-               <item>
-                <property name="text">
-                 <string>Cost</string>
-                </property>
-               </item>
-               <item>
-                <property name="text">
-                 <string>Release Date</string>
-                </property>
-               </item>
-               <item>
-                <property name="text">
-                 <string>Rarity</string>
-                </property>
-               </item>
-              </widget>
-             </item>
-             <item row="1" column="0">
-              <widget class="QLabel" name="secondary_sort_label">
-               <property name="text">
-                <string>Secondary Sort</string>
-               </property>
-              </widget>
-             </item>
-             <item row="1" column="1">
-              <widget class="QComboBox" name="secondary_sort_dropdown">
-               <property name="editable">
-                <bool>false</bool>
-               </property>
-               <property name="currentIndex">
-                <number>0</number>
-               </property>
-               <item>
-                <property name="text">
-                 <string>Alphabetical</string>
-                </property>
-               </item>
-               <item>
-                <property name="text">
-                 <string>Mastery</string>
-                </property>
-               </item>
-               <item>
-                <property name="text">
-                 <string>Cost</string>
-                </property>
-               </item>
-               <item>
-                <property name="text">
-                 <string>Release Date</string>
-                </property>
-               </item>
-               <item>
-                <property name="text">
-                 <string>Rarity</string>
-                </property>
-               </item>
-              </widget>
-             </item>
-             <item row="2" column="0">
-              <widget class="QCheckBox" name="show_unowned_checkbox">
-               <property name="text">
-                <string>Show Unowned</string>
-               </property>
-              </widget>
-             </item>
-             <item row="3" column="0">
-              <widget class="QLabel" name="last_refresh_label">
-               <property name="text">
-                <string>Last Refresh: Never</string>
-               </property>
-              </widget>
-             </item>
-             <item row="3" column="1">
-              <widget class="QPushButton" name="refresh_button">
-               <property name="maximumSize">
-                <size>
-                 <width>50</width>
-                 <height>16777215</height>
-                </size>
-               </property>
-               <property name="styleSheet">
-                <string>0</string>
-               </property>
-               <property name="text">
-                <string>Refresh</string>
-               </property>
-               <property name="checkable">
-                <bool>false</bool>
-               </property>
-              </widget>
-             </item>
-            </layout>
-           </widget>
-          </item>
-          <item>
-           <widget class="QWidget" name="stats_widget" native="true">
-            <property name="minimumSize">
-             <size>
-              <width>0</width>
-              <height>100</height>
-             </size>
-            </property>
-            <layout class="QFormLayout" name="stats_widget_layout">
-             <item row="0" column="0">
-              <widget class="QLabel" name="num_champs_owned_label">
-               <property name="text">
-                <string>Number of Champions Owned:</string>
-               </property>
-              </widget>
-             </item>
-             <item row="1" column="0">
-              <widget class="QLabel" name="max_blue_essence_needed_label">
-               <property name="text">
-                <string>Maximum Blue Essence Needed:</string>
-               </property>
-              </widget>
-             </item>
-             <item row="1" column="1">
-              <widget class="QLabel" name="max_blue_essence_needed_value_label">
-               <property name="text">
-                <string>TextLabel</string>
-               </property>
-              </widget>
-             </item>
-             <item row="0" column="1">
-              <widget class="QLabel" name="num_champs_owned_value_label">
-               <property name="text">
-                <string>TextLabel</string>
-               </property>
-              </widget>
-             </item>
-            </layout>
-           </widget>
-          </item>
-         </layout>
-        </widget>
-       </item>
       </layout>
      </widget>
     </item>
@@ -349,7 +376,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>878</width>
+     <width>1014</width>
      <height>21</height>
     </rect>
    </property>
