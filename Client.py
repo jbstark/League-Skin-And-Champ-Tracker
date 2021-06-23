@@ -29,6 +29,9 @@ class Client:
         # Disable InsecureRequestWarning as the connection to the client cannot be secure
         requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
+        # Stores client information
+        self.settings = None
+
         # Variables for clientRunning
         self.clientRunning = False
         self.clientNames = ["leagueclientuxrender.exe", "leagueclientux"]
@@ -68,14 +71,25 @@ class Client:
         :return:
         """
         # First check local machine info to see if there is a stored install path
-        stored_paths = self.con_machine.execute("SELECT installPath FROM Information")
+        # read the json
+        data_path = os.path.join(self.data_folder_name, r'local_machine_info.json')
+        with open(data_path, 'r') as infile:
+            self.settings = json.load(infile)
+            stored_paths = self.settings['Install Directories']
+            skip_psutil = self.settings['Skip Psutil']
+
         for path in stored_paths:
-            self.possibleDirectories.add(path[0])
+            self.possibleDirectories.add(path)
+
+        # If no possible directories stored, use psutil ignoring user setting
+        if not self.possibleDirectories:
+            skip_psutil = False
 
         # Look for the lockfile using the stored directories
         self.find_lockfile()
-        # If the lockfile was found, we don't need psutil and can skip this part. If not found try to find process
-        if self.lockfileFound:
+
+        # If the lockfile was found, we don't need psutil and can skip this part. Also see if we should skip psutil
+        if self.lockfileFound or skip_psutil:
             return
 
         # If no lockfile was found using the stored install directories use psutil to find process
@@ -118,9 +132,20 @@ class Client:
                 self.clientRunning = True
                 self.currentDirectory = lockfile
 
-                # Update local machine info for faster startup in the future
-                with self.con_machine:
-                    self.con_machine.execute(f'INSERT or IGNORE INTO Information (installPath) VALUES (?)', (path,))
+                # Get all previous install paths
+                install_directories = self.settings["Install Directories"]
+                # Add current install path to list
+                install_directories.append(path)
+                # Create a set to remove duplicates
+                self.settings["Install Directories"] = list(set(install_directories))
+
+                # Create path for where the json file is stored
+                data_path = os.path.join(self.data_folder_name, r'local_machine_info.json')
+
+                # Write all install paths to the json file
+                with open(data_path, "w") as outfile:
+                    json.dump(self.settings, outfile, indent=4)
+
                 break
             # League client is still opening, FAIL
             except FileNotFoundError:
@@ -140,14 +165,18 @@ class Client:
     # Database and API management
 
     def check_local_information(self):
-        # Check local machine database
-        path = os.path.join(self.data_folder_name, r'local_machine_info.db')
 
-        # filename = "local_machine_info.db"
-        self.con_machine = sqlite3.connect(path)
-
-        with self.con_machine:
-            self.con_machine.execute("CREATE TABLE if not exists Information (installPath TEXT UNIQUE)")
+        # json file
+        path = os.path.join(self.data_folder_name, r'local_machine_info.json')
+        if os.path.exists(path):
+            pass
+        else:
+            data = {
+                'Install Directories': [],
+                'Skip Psutil': False
+            }
+            with open(path, 'w') as outfile:
+                json.dump(data, outfile, indent=4)
 
     def check_db(self):
         """
@@ -837,6 +866,8 @@ class Client:
         # Tokens per hour times 24 for each hour in the day
         tokens_per_day = round(tokens_remaining/days_left, 3)
 
+        if tokens_per_day < 0:
+            return "Goal met"
         return tokens_per_day
 
     def get_current_tokens(self):
