@@ -33,4 +33,6 @@ print(client.get_event_missions())
 print("\n", "Event Shop")
 print(client.get_event_shop())
 
+print("\n", "Current Tokens:", client.get_current_tokens())
+
 print("\n", "Tokens needed each day:", client.get_tokens_per_day(2200))
