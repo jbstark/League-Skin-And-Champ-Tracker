@@ -3,7 +3,7 @@ from Client import Client
 from flowlayout import FlowLayout
 from PyQt5 import QtWidgets, QtCore, QtGui
 from datetime import datetime
-
+from PyQt5 import QtTest
 
 def create_new_icon_widget(name, api_call_path, client, width=160, height=200, parent=None):
     """
@@ -76,16 +76,21 @@ def create_new_icon_widget(name, api_call_path, client, width=160, height=200, p
     return icon_frame
 
 
-def create_client_refresh_messageBox(parent=None):
+def create_client_refresh_messageBox(firstOpen, parent=None):
     """
     Creates a QMessageBox popup window allowing the user to either close the program or try to find the client process.
     
     :param parent: Qt object containing the message box.
     :return: A QMessageBox window object with a message and 'Retry' and 'Close' buttons.
     """
+
+    if firstOpen:
+        text = "League of Legends client is not running. Check again?"
+    else:
+        text = "League of Legends has been quit. Please reopen and check again."
     client_refresh_messageBox = QtWidgets.QMessageBox(parent)
     client_refresh_messageBox.setIcon(QtWidgets.QMessageBox.Warning)
-    client_refresh_messageBox.setText("League of Legends client is not running. Check again?")
+    client_refresh_messageBox.setText(text)
     client_refresh_messageBox.setWindowTitle("Client Not Running")
     client_refresh_messageBox.setStandardButtons(QtWidgets.QMessageBox.Retry | QtWidgets.QMessageBox.Close)
     client_refresh_messageBox.setDefaultButton(QtWidgets.QMessageBox.Retry)
@@ -127,7 +132,7 @@ class TrackerWindow(QtWidgets.QMainWindow):
         
         self.client = Client()
         while not self.client.clientRunning:
-            create_client_refresh_messageBox(self.ui.centralwidget).exec_()
+            create_client_refresh_messageBox(True, self.ui.centralwidget).exec_()
             self.client.check_client_running()
         self.refresh()
         
@@ -170,7 +175,33 @@ class TrackerWindow(QtWidgets.QMainWindow):
     
     def refresh(self):
         """Updates client data and resets its text."""
-        self.client.update()
+        try:
+            self.client.update()
+        except TypeError:
+            # The client has been closed
+            closing = True
+            self.client.clientRunning = False
+            self.client.lockfileFound = False
+
+            # While the client is still closing, look for the lockfile
+            while closing:
+                # Wait one second before trying to open the file again
+                QtTest.QTest.qWait(1000)
+                try:
+                    with open(self.client.currentDirectory, 'r'):
+                        pass
+                # Lockfile is gone, client is fully closed
+                except FileNotFoundError:
+                    closing = False
+                    print("Client fully closed")
+
+            # While the client is not running, ask if they user wants to refresh
+            while not self.client.clientRunning:
+                create_client_refresh_messageBox(False, self.ui.centralwidget).exec_()
+                self.client.check_client_running()
+            # Client is now running and can be refreshed
+            self.refresh()
+
         self.ui.num_champs_owned_value_label.setText(self.client.get_num_champs(True))
         self.ui.max_blue_essence_needed_value_label.setText(self.client.get_ip_needed("max", True, True))
         
