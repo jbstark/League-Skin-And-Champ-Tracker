@@ -4,6 +4,7 @@
 lol_*
 local_machine_info.db
 /data/
+/logs/
 
 #Default python ignore
 
