@@ -27,43 +27,19 @@ class Client:
         if not os.path.exists(self.data_folder_name):
             os.makedirs(self.data_folder_name)
 
-        # Create log Folder for storing information
+        # Stores user settings
+        self.settings = None
+
+        # Load user settings
+        self.check_local_information()
+
+        # Create the logger
         self.logs_folder_name = "logs"
-        if not os.path.exists(self.logs_folder_name):
-            os.makedirs(self.logs_folder_name)
-
-        # Get the file name
-        start = time.strftime("%Y-%m-%d-")
-        log_filename = os.path.join("logs", start)
-
-        # See if log file with name exists, and then try to increment log file by 1
-        i = 1
-        while os.path.exists(log_filename + "%s.log" % i):
-            i += 1
-        log_filename = log_filename + str(i) + ".log"
-
-        # Create Custom Logger
-        self.logger = logging.getLogger(__name__)
-        self.logger.setLevel(logging.DEBUG)
-
-        # Create handlers
-        handler = logging.FileHandler(log_filename, delay=True)
-        handler.setLevel(logging.DEBUG)
-
-        # Create format
-        handler_format = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s", datefmt='%d-%b-%y %H:%M:%S')
-
-        # Add format to the handler
-        handler.setFormatter(handler_format)
-
-        # Add handlers to the logger
-        self.logger.addHandler(handler)
+        self.logger = None
+        self.create_logger()
 
         # Disable InsecureRequestWarning as the connection to the client cannot be secure
         requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
-
-        # Stores client information
-        self.settings = None
 
         # Variables for clientRunning
         self.clientRunning = False
@@ -74,6 +50,7 @@ class Client:
         # Variables needed for lockfile
         self.url = None
         self.header = None
+        self.lockfileFound = False
 
         # Summoner Info
         self.summonerInfo = None
@@ -83,14 +60,11 @@ class Client:
         # Current Patch
         self.currentPatch = None
 
-        self.lockfileFound = False
-
         # Creates connection to champions.db
         self.con = None
         self.con_machine = None
 
-        self.check_local_information()
-
+        # Check to see if the client is running
         self.check_client_running()
 
     # Client Checking Functions
@@ -110,16 +84,17 @@ class Client:
         # First check local machine info to see if there is a stored install path
         # read the json
         data_path = os.path.join(self.data_folder_name, r'local_machine_info.json')
-        with open(data_path, 'r') as infile:
-            self.settings = json.load(infile)
-            stored_paths = self.settings['Install Directories']
-            skip_psutil = self.settings['Skip Psutil']
 
-        for path in stored_paths:
-            self.possibleDirectories.add(path)
+        stored_paths = self.settings['Install Directories']
+        skip_psutil = self.settings['Skip Psutil']
 
-        # If no possible directories stored, use psutil ignoring user setting
-        if not self.possibleDirectories:
+        if stored_paths:
+            # If there are stored paths, added them to possible directories
+            for path in stored_paths:
+                self.possibleDirectories.add(path)
+
+        # If no possible directories stored, ignore user setting and use psutil
+        else:
             skip_psutil = False
 
         # Look for the lockfile using the stored directories
@@ -199,6 +174,43 @@ class Client:
 
     # Database and API management
 
+    def create_logger(self):
+
+        # Log levels
+        log_levels = [logging.DEBUG, logging.INFO, logging.WARNING, logging.ERROR, logging.CRITICAL]
+        level = log_levels[self.settings['Log Level']]
+
+        # Create log Folder for storing information
+        if not os.path.exists(self.logs_folder_name):
+            os.makedirs(self.logs_folder_name)
+
+        # Get the file name
+        start = time.strftime("%Y-%m-%d-")
+        log_filename = os.path.join("logs", start)
+
+        # See if log file with name exists, and then try to increment log file by 1
+        i = 1
+        while os.path.exists(log_filename + "%s.log" % i):
+            i += 1
+        log_filename = log_filename + str(i) + ".log"
+
+        # Create Custom Logger
+        self.logger = logging.getLogger(__name__)
+        self.logger.setLevel(level)
+
+        # Create handlers
+        handler = logging.FileHandler(log_filename, delay=True)
+        handler.setLevel(level)
+
+        # Create format
+        handler_format = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s", datefmt='%d-%b-%y %H:%M:%S')
+
+        # Add format to the handler
+        handler.setFormatter(handler_format)
+
+        # Add handlers to the logger
+        self.logger.addHandler(handler)
+
     def check_local_information(self):
 
         # json file
@@ -208,10 +220,15 @@ class Client:
         else:
             data = {
                 'Install Directories': [],
-                'Skip Psutil': False
+                'Skip Psutil': True,
+                'Log Level': 0
             }
             with open(path, 'w') as outfile:
                 json.dump(data, outfile, indent=4)
+
+        # Read the settings and place them in self.settings
+        with open(path, 'r') as infile:
+            self.settings = json.load(infile)
 
     def check_db(self):
         """
@@ -321,10 +338,6 @@ class Client:
                 time.sleep(1)
                 attempt += 1
                 pass
-
-
-        # Get a response to see if parts of the client ares still loading
-        response = self.call_api(f'/lol-champions/v1/inventories/{self.summonerId}/champions-minimal')
 
         # Check to see if client champion plugin is loading
         champ_api_loading = True
