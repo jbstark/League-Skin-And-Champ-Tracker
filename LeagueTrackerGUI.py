@@ -9,9 +9,8 @@ from PyQt5 import QtTest
 class CurrentEventDetailsWidget(QtWidgets.QWidget):
     def __init__(self, client, parent=None, *args, **kwargs):
         super().__init__(parent=parent, *args, **kwargs)
-
+        
         self.setObjectName("current_event_details_widget")
-        #self.setMinimumSize(300, 300)
         self.setMaximumSize(300, 300)
         
         self.current_event_widget_vertical_layout = QtWidgets.QVBoxLayout(self)
@@ -24,6 +23,7 @@ class CurrentEventDetailsWidget(QtWidgets.QWidget):
         
         self.token_target_frame_horizontal_layout = QtWidgets.QHBoxLayout(self.token_target_frame)
         self.token_target_frame_horizontal_layout.setObjectName("token_target_frame_horizontal_layout")
+        self.token_target_frame_horizontal_layout.setContentsMargins(0, 9, 9, 9)
         
         self.token_target_frame_label = QtWidgets.QLabel(self.token_target_frame)
         self.token_target_frame_label.setObjectName("token_target_frame_label")
@@ -44,7 +44,7 @@ class CurrentEventDetailsWidget(QtWidgets.QWidget):
         self.current_event_target_tokens_per_day_label = QtWidgets.QLabel(self)
         self.current_event_target_tokens_per_day_label.setObjectName("current_event_target_tokens_per_day_label")
         self.current_event_widget_vertical_layout.addWidget(self.current_event_target_tokens_per_day_label)
-
+        
         _translate = QtCore.QCoreApplication.translate
         self.setWindowTitle(_translate("current_event_details_widget", "Form"))
         self.token_target_frame_label.setText(_translate("current_event_details_widget", "Enter target tokens:"))
@@ -56,7 +56,7 @@ class CurrentEventDetailsWidget(QtWidgets.QWidget):
         QtCore.QMetaObject.connectSlotsByName(self)
         
         self.token_target_frame_input_lineedit.textEdited.connect(lambda: self.text_edited(client))
-        
+    
     def text_edited(self, client):
         new_text = self.token_target_frame_input_lineedit.text()
         try:
@@ -67,39 +67,20 @@ class CurrentEventDetailsWidget(QtWidgets.QWidget):
 
 
 class IconWidget(QtWidgets.QFrame):
-    def __init__(self, name="", api_call_path="", client=None, width=160, height=200, parent=None, *args, **kwargs):
+    def __init__(self, name="", api_call_path="", cost=0, client=None, width=160, height=200, parent=None, *args, **kwargs):
         super().__init__(parent=parent, *args, **kwargs)
-        
+    
         self.setObjectName(f"icon_frame_{name}")
         self.setCursor(QtGui.QCursor(QtCore.Qt.OpenHandCursor))  # Indicates that the widget is clickable
         self.setFrameShape(QtWidgets.QFrame.Box)
         self.setMinimumSize(width, height)
         self.setMaximumSize(width, height)
-        
+    
         # Creates layout for the main widget
         self.icon_frame_qvboxlayout = QtWidgets.QVBoxLayout(self)
         self.icon_frame_qvboxlayout.setObjectName(f"icon_frame_{name}_qvboxlayout")
         
-        # Creates and sets up the label to contain the widget's image
-        self.image_label = QtWidgets.QLabel(self)
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Preferred)
-        sizePolicy.setHorizontalStretch(0)
-        sizePolicy.setVerticalStretch(1)  # Makes the image as large as possible
-        sizePolicy.setHeightForWidth(self.image_label.sizePolicy().hasHeightForWidth())
-        self.image_label.setSizePolicy(sizePolicy)
-        
-        # Loads the image data from the api, adds it to the label, and adds the label to the main widget
-        image = QtGui.QImage()
-        image.loadFromData(client.call_api_image(api_call_path).content)  # load image data from api
-        image_pixmap = QtGui.QPixmap()
-        image_pixmap = image_pixmap.fromImage(image).scaled(width - 20,
-                                                            height - 20 - (height - width))  # set image size
-        self.image_label.setPixmap(image_pixmap)
-        self.image_label.setAlignment(QtCore.Qt.AlignCenter)
-        self.image_label.setObjectName(f"{name}_image_label")
-        self.icon_frame_qvboxlayout.addWidget(self.image_label)
-        
-        # Creates and sets up the label to contain the widget's text, and adds it to the main widget
+        # Creates and sets up the label to contain the widget's name text, and adds it to the main widget
         self.name_label = QtWidgets.QLabel(self)
         # Make the text label small
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Minimum)
@@ -110,16 +91,49 @@ class IconWidget(QtWidgets.QFrame):
         self.name_label.setAlignment(QtCore.Qt.AlignCenter)
         self.name_label.setObjectName(f"{name}_name_label")
         self.name_label.setWordWrap(True)
-        self.name_label.setText(
-            self.name_label.fontMetrics().elidedText(name, QtCore.Qt.ElideRight, 100))  # TODO make this line work
         self.name_label.setToolTip(name)  # Hover text is the full text
+        self.name_label.setText(name)
         self.icon_frame_qvboxlayout.addWidget(self.name_label)
-        
+    
+        # Creates and sets up the label to contain the widget's image
+        self.image_label = QtWidgets.QLabel(self)
+        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Preferred)
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(1)  # Makes the image as large as possible
+        sizePolicy.setHeightForWidth(self.image_label.sizePolicy().hasHeightForWidth())
+        self.image_label.setSizePolicy(sizePolicy)
+    
+        # Loads the image data from the api, adds it to the label, and adds the label to the main widget
+        image = QtGui.QImage()
+        image.loadFromData(client.call_api_image(api_call_path).content)  # load image data from api
+        image_pixmap = QtGui.QPixmap()
+        image_pixmap = image_pixmap.fromImage(image).scaled(width - 20,
+                                                            height - 20 - (height - width))  # set image size
+        self.image_label.setPixmap(image_pixmap)
+        self.image_label.setAlignment(QtCore.Qt.AlignCenter)
+        self.image_label.setObjectName(f"{name}_image_label")
+        self.icon_frame_qvboxlayout.addWidget(self.image_label)
+
+        # Creates and sets up the label to contain the widget's name text, and adds it to the main widget
+        self.cost_label = QtWidgets.QLabel(self)
+        # Make the text label small
+        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Minimum)
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(self.cost_label.sizePolicy().hasHeightForWidth())
+        self.cost_label.setSizePolicy(sizePolicy)
+        self.cost_label.setAlignment(QtCore.Qt.AlignCenter)
+        self.cost_label.setObjectName(f"{name}_cost_label")
+        self.cost_label.setWordWrap(True)
+        self.cost_label.setText(f"{cost} tokens")
+        self.icon_frame_qvboxlayout.addWidget(self.cost_label)
+    
         # Boilerplate code generated by pyuic5
         _translate = QtCore.QCoreApplication.translate
         self.setWindowTitle(_translate("icon_frame", "Frame"))
         self.image_label.setText(_translate("icon_frame", ""))
-        self.name_label.setText(_translate("icon_frame", name))
+        # self.name_label.setText(
+        #    _translate("icon_frame", self.name_label.fontMetrics().elidedText(name, QtCore.Qt.ElideRight, 110)))
         QtCore.QMetaObject.connectSlotsByName(self)
 
 
@@ -176,6 +190,7 @@ class TrackerWindow(QtWidgets.QMainWindow):
         self.setup_current_event_tab_layout()
     
         self.last_refresh_time = None
+        self.current_event_widget = None
     
         self.client = Client()
         while not self.client.clientRunning:
@@ -189,11 +204,14 @@ class TrackerWindow(QtWidgets.QMainWindow):
     
     def new_tab_selected(self):
         if self.ui.tab_widget.tabText(self.ui.tab_widget.currentIndex()) == "Current Event":
-            self.ui.left_panel_frame_vertical_layout.addWidget(self.current_event_sidebar(),
+            self.current_event_widget = self.current_event_sidebar()
+            self.ui.left_panel_frame_vertical_layout.addWidget(self.current_event_widget,
                                                                alignment=QtCore.Qt.AlignLeft | QtCore.Qt.AlignTop)
         else:
-            self.ui.settings_vertical_layout.removeWidget(self.ui.settings_widget.findChild(
-                QtWidgets.QWidget, "current_event_details_widget"))
+            if not (self.current_event_widget is None):
+                self.ui.left_panel_frame_vertical_layout.removeWidget(self.current_event_widget)
+                self.current_event_widget.deleteLater()
+                self.current_event_widget = None
     
     def current_event_sidebar(self):
         return CurrentEventDetailsWidget(self.client, parent=self.ui.left_panel_frame)
@@ -204,7 +222,7 @@ class TrackerWindow(QtWidgets.QMainWindow):
         for item in event_shop:
             self.ui.current_event_tab_scroll_area_widget_contents_layout.addWidget(
                 IconWidget(
-                    item[0], item[1], self.client, parent=self.ui.current_event_tab_scroll_area_widget_contents))
+                    item[0], item[1], item[2], self.client, parent=self.ui.current_event_tab_scroll_area_widget_contents))
     
     def setup_champs_tab_layout(self):
         """Creates flow layout for the champs tab."""
