@@ -313,35 +313,31 @@ class Client:
 
         # Get a response to see if parts of the client ares still loading
         response = self.call_api(f'/lol-champions/v1/inventories/{self.summonerId}/champions-minimal')
-        try:
-            # If the client errors, it is still loading
-            if response['message'] == 'Champion data has not yet been received.':
 
-                loading = True
-                num_seconds = 0
+        # Check to see if client champion plugin is loading
+        champ_api_loading = True
+        attempt = 1
 
-                # While the client is loading
-                while loading:
-                    # If over 15 seconds for client to load, quit
-                    if num_seconds > 15:
-                        self.clientRunning = False
-                        self.lockfileFound = False
+        while champ_api_loading:
+
+            # If over 15 seconds for client to load, quit
+            if attempt > 15:
+                self.clientRunning = False
+                self.lockfileFound = False
+                return
+
+            try:
+                response = self.call_api(f'/lol-champions/v1/inventories/{self.summonerId}/champions-minimal')
+                if response['message'] == 'Champion data has not yet been received.':
+
                     # Wait 1 seconds then retry API call
+                    self.logger.warning(f'Basic API not fully loaded, attempt number {attempt}')
                     time.sleep(1)
-                    num_seconds += 1
-                    response = self.call_api(f'/lol-champions/v1/inventories/{self.summonerId}/champions-minimal')
+                    attempt += 1
+                    pass
 
-                    try:
-                        # If it failed, client is still loading and stay in while loop
-                        if response['message'] == 'Champion data has not yet been received.':
-                            self.logger.warning(f'Champion API not fully loaded, attempt number {num_seconds}')
-                            pass
-                    except (KeyError, TypeError, AttributeError):
-                        # If an error was generated, then it stopped loading
-                        loading = False
-        # Client is fully loaded, so pass
-        except (KeyError, TypeError, AttributeError):
-            pass
+            except (KeyError, TypeError, requests.exceptions.ConnectionError):
+                champ_api_loading = False
 
     def call_api(self, address):
         """
