@@ -152,9 +152,9 @@ class Client:
 
             # Client was running, but Lockfile was not found. Error and quit
             if self.lockfileFound is False:
-                logging.error("The lockfile was not found, but the client is running")
+                self.logger.error("The lockfile was not found, but the client is running")
         else:
-            logging.info("The League of Legends client is not running")
+            self.logger.info("The League of Legends client is not running")
 
     def find_lockfile(self):
         """
@@ -178,19 +178,8 @@ class Client:
                 self.clientRunning = True
                 self.currentDirectory = lockfile
 
-                # Get all previous install paths
-                install_directories = self.settings["Install Directories"]
-                # Add current install path to list
-                install_directories.append(path)
-                # Create a set to remove duplicates
-                self.settings["Install Directories"] = list(set(install_directories))
-
-                # Create path for where the json file is stored
-                data_path = os.path.join(self.data_folder_name, r'local_machine_info.json')
-
-                # Write all install paths to the json file
-                with open(data_path, "w") as outfile:
-                    json.dump(self.settings, outfile, indent=4)
+                # Add path to local settings
+                self.set_local_settings("Install Directories", path, True)
 
                 break
             # League client is still opening, FAIL
@@ -936,13 +925,12 @@ class Client:
         # Path to settings file (for saving)
         data_path = os.path.join(self.data_folder_name, r'local_machine_info.json')
 
-        if add_not_update():
-
+        if add_not_update:
             # Get current data of setting to add to
             setting_data = self.settings[setting]
 
-            if type(setting_data) is not list():
-                logging.debug("Set settings called with add instead of update, but no list found")
+            if not isinstance(setting_data, list):
+                self.logger.debug("Set settings called with add instead of update, but no list found")
                 return
             # Add current install path to list
             setting_data.append(value)
@@ -952,9 +940,9 @@ class Client:
         else:
             self.settings[setting] = value
 
-            # Write all install paths to the json file
-            with open(data_path, "w") as outfile:
-                json.dump(self.settings, outfile, indent=4)
+        # Write all install paths to the json file
+        with open(data_path, "w") as outfile:
+            json.dump(self.settings, outfile, indent=4)
 
 
 def sort_champs(champ):
