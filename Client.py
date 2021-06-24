@@ -131,7 +131,7 @@ class Client:
 
         # If we can skip psutil, then the client must not be running, or is running but incorrect path
         if skip_psutil:
-            self.logger.info("The League of Legends client is not running, or is running but an incorrect path is set."
+            self.logger.info("The League of Legends client is not running, or is running but an incorrect path is set. "
                              "Please update the path, or allow for automatic checking of processes in settings")
             return
 
@@ -220,6 +220,11 @@ class Client:
         :return:
         """
 
+        # Check for if the client was closed
+        if not self.summonerName:
+            self.logger.warning(f'Client has been quit during operations. Please refresh')
+            return
+
         # Create file for each user
         filename = "lol_" + self.summonerName + ".db"
         path = os.path.join(self.data_folder_name, f'{filename}')
@@ -288,12 +293,18 @@ class Client:
         basic_api_loading = True
         attempt = 1
 
+        # Track time for basic_api_loading
+        basic_time = time.time()
+
         # While the client is loading
         while basic_api_loading:
-            # If over 15 seconds for client to load, quit
-            if attempt > 15:
+            # If over 9 seconds for client to load, quit
+            if attempt > 9:
+                print("test")
                 self.clientRunning = False
                 self.lockfileFound = False
+                self.logger.warning('Basic API never loaded. Either client is slow, or was quit. Time taken:' +
+                                    f'{time.time()-basic_time}')
                 return
 
             try:
@@ -311,6 +322,7 @@ class Client:
                 attempt += 1
                 pass
 
+
         # Get a response to see if parts of the client ares still loading
         response = self.call_api(f'/lol-champions/v1/inventories/{self.summonerId}/champions-minimal')
 
@@ -318,12 +330,17 @@ class Client:
         champ_api_loading = True
         attempt = 1
 
+        # Track time for basic_api_loading
+        champion_time = time.time()
+
         while champ_api_loading:
 
-            # If over 15 seconds for client to load, quit
-            if attempt > 15:
+            # If over 9 seconds for client to load, quit
+            if attempt > 9:
                 self.clientRunning = False
                 self.lockfileFound = False
+                self.logger.warning('Champion API never loaded. Either client is slow, or was quit. Time taken' +
+                                    f':{time.time() - champion_time}')
                 return
 
             try:
@@ -331,7 +348,7 @@ class Client:
                 if response['message'] == 'Champion data has not yet been received.':
 
                     # Wait 1 seconds then retry API call
-                    self.logger.warning(f'Basic API not fully loaded, attempt number {attempt}')
+                    self.logger.warning(f'Champion API not fully loaded, attempt number {attempt}')
                     time.sleep(1)
                     attempt += 1
                     pass
@@ -351,7 +368,6 @@ class Client:
             return None
         request = self.url + address
         response = requests.get(request, verify=False, headers=self.header)
-
         return json.loads(response.text)
 
     def call_api_image(self, address):
