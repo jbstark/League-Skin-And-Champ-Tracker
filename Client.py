@@ -31,6 +31,7 @@ class Client:
         self.settings = None
 
         # Load user settings
+        self.new_keys = {}
         self.check_local_information()
 
         # Create the logger
@@ -82,9 +83,6 @@ class Client:
         self.logger.info("Checking if client is loaded")
 
         # First check local machine info to see if there is a stored install path
-        # read the json
-        data_path = os.path.join(self.data_folder_name, r'local_machine_info.json')
-
         stored_paths = self.settings['Install Directories']
         skip_psutil = self.settings['Skip Psutil']
 
@@ -211,18 +209,43 @@ class Client:
         # Add handlers to the logger
         self.logger.addHandler(handler)
 
+        # Log keys that were added as part of settings check
+        for key in self.new_keys:
+            self.logger.info(f"Key {key} was missing from user settings. " +
+                             f"Added with default value of {self.new_keys[key]}")
+
     def check_local_information(self):
 
         # json file
-        path = os.path.join(self.data_folder_name, r'local_machine_info.json')
+        path = os.path.join(self.data_folder_name, r'settings.json')
+
+        # Default data to store in the json
+        data = {
+            'Install Directories': [],
+            'Skip Psutil': True,
+            'Log Level': 0
+        }
+
         if os.path.exists(path):
-            pass
+            # If it exists, then compare keys and if keys are missing add them
+            # Read the settings and place them in self.settings
+            with open(path, 'r') as infile:
+                # Current settings file
+                settings = json.load(infile)
+                # Default keys
+                keys = settings.keys()
+                # for each key in default keys
+                for key in data.keys():
+                    if key not in keys:
+                        # Key is missing from settings, add key
+                        self.new_keys[key] = data[key]
+                        settings[key] = data[key]
+            # Write data to the path if there is a new key
+            if self.new_keys:
+                with open(path, 'w') as outfile:
+                    json.dump(data, outfile, indent=4)
         else:
-            data = {
-                'Install Directories': [],
-                'Skip Psutil': True,
-                'Log Level': 0
-            }
+            # Write data to the path
             with open(path, 'w') as outfile:
                 json.dump(data, outfile, indent=4)
 
@@ -939,7 +962,7 @@ class Client:
 
     def set_local_settings(self, setting, value, add_not_update):
         """
-        Set local settings for the user stored in local_machine_info.json
+        Set local settings for the user stored in settings.json
 
         :param setting:
         :param value:
@@ -948,7 +971,7 @@ class Client:
         """
 
         # Path to settings file (for saving)
-        data_path = os.path.join(self.data_folder_name, r'local_machine_info.json')
+        data_path = os.path.join(self.data_folder_name, r'settings.json')
 
         if add_not_update:
             # Get current data of setting to add to
