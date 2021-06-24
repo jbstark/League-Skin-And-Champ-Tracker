@@ -27,43 +27,19 @@ class Client:
         if not os.path.exists(self.data_folder_name):
             os.makedirs(self.data_folder_name)
 
-        # Create log Folder for storing information
+        # Stores user settings
+        self.settings = None
+
+        # Load user settings
+        self.check_local_information()
+
+        # Create the logger
         self.logs_folder_name = "logs"
-        if not os.path.exists(self.logs_folder_name):
-            os.makedirs(self.logs_folder_name)
-
-        # Get the file name
-        start = time.strftime("%Y-%m-%d-")
-        log_filename = os.path.join("logs", start)
-
-        # See if log file with name exists, and then try to increment log file by 1
-        i = 1
-        while os.path.exists(log_filename + "%s.log" % i):
-            i += 1
-        log_filename = log_filename + str(i) + ".log"
-
-        # Create Custom Logger
-        self.logger = logging.getLogger(__name__)
-        self.logger.setLevel(logging.DEBUG)
-
-        # Create handlers
-        handler = logging.FileHandler(log_filename, delay=True)
-        handler.setLevel(logging.DEBUG)
-
-        # Create format
-        handler_format = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s", datefmt='%d-%b-%y %H:%M:%S')
-
-        # Add format to the handler
-        handler.setFormatter(handler_format)
-
-        # Add handlers to the logger
-        self.logger.addHandler(handler)
+        self.logger = None
+        self.create_logger()
 
         # Disable InsecureRequestWarning as the connection to the client cannot be secure
         requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
-
-        # Stores client information
-        self.settings = None
 
         # Variables for clientRunning
         self.clientRunning = False
@@ -74,6 +50,7 @@ class Client:
         # Variables needed for lockfile
         self.url = None
         self.header = None
+        self.lockfileFound = False
 
         # Summoner Info
         self.summonerInfo = None
@@ -83,14 +60,11 @@ class Client:
         # Current Patch
         self.currentPatch = None
 
-        self.lockfileFound = False
-
         # Creates connection to champions.db
         self.con = None
         self.con_machine = None
 
-        self.check_local_information()
-
+        # Check to see if the client is running
         self.check_client_running()
 
     # Client Checking Functions
@@ -110,16 +84,17 @@ class Client:
         # First check local machine info to see if there is a stored install path
         # read the json
         data_path = os.path.join(self.data_folder_name, r'local_machine_info.json')
-        with open(data_path, 'r') as infile:
-            self.settings = json.load(infile)
-            stored_paths = self.settings['Install Directories']
-            skip_psutil = self.settings['Skip Psutil']
 
-        for path in stored_paths:
-            self.possibleDirectories.add(path)
+        stored_paths = self.settings['Install Directories']
+        skip_psutil = self.settings['Skip Psutil']
 
-        # If no possible directories stored, use psutil ignoring user setting
-        if not self.possibleDirectories:
+        if stored_paths:
+            # If there are stored paths, added them to possible directories
+            for path in stored_paths:
+                self.possibleDirectories.add(path)
+
+        # If no possible directories stored, ignore user setting and use psutil
+        else:
             skip_psutil = False
 
         # Look for the lockfile using the stored directories
@@ -131,7 +106,7 @@ class Client:
 
         # If we can skip psutil, then the client must not be running, or is running but incorrect path
         if skip_psutil:
-            self.logger.info("The League of Legends client is not running, or is running but an incorrect path is set."
+            self.logger.info("The League of Legends client is not running, or is running but an incorrect path is set. "
                              "Please update the path, or allow for automatic checking of processes in settings")
             return
 
@@ -152,9 +127,9 @@ class Client:
 
             # Client was running, but Lockfile was not found. Error and quit
             if self.lockfileFound is False:
-                logging.error("The lockfile was not found, but the client is running")
+                self.logger.error("The lockfile was not found, but the client is running")
         else:
-            logging.info("The League of Legends client is not running")
+            self.logger.info("The League of Legends client is not running")
 
     def find_lockfile(self):
         """
@@ -178,19 +153,8 @@ class Client:
                 self.clientRunning = True
                 self.currentDirectory = lockfile
 
-                # Get all previous install paths
-                install_directories = self.settings["Install Directories"]
-                # Add current install path to list
-                install_directories.append(path)
-                # Create a set to remove duplicates
-                self.settings["Install Directories"] = list(set(install_directories))
-
-                # Create path for where the json file is stored
-                data_path = os.path.join(self.data_folder_name, r'local_machine_info.json')
-
-                # Write all install paths to the json file
-                with open(data_path, "w") as outfile:
-                    json.dump(self.settings, outfile, indent=4)
+                # Add path to local settings
+                self.set_local_settings("Install Directories", path, True)
 
                 break
             # League client is still opening, FAIL
@@ -210,6 +174,43 @@ class Client:
 
     # Database and API management
 
+    def create_logger(self):
+
+        # Log levels
+        log_levels = [logging.DEBUG, logging.INFO, logging.WARNING, logging.ERROR, logging.CRITICAL]
+        level = log_levels[self.settings['Log Level']]
+
+        # Create log Folder for storing information
+        if not os.path.exists(self.logs_folder_name):
+            os.makedirs(self.logs_folder_name)
+
+        # Get the file name
+        start = time.strftime("%Y-%m-%d-")
+        log_filename = os.path.join("logs", start)
+
+        # See if log file with name exists, and then try to increment log file by 1
+        i = 1
+        while os.path.exists(log_filename + "%s.log" % i):
+            i += 1
+        log_filename = log_filename + str(i) + ".log"
+
+        # Create Custom Logger
+        self.logger = logging.getLogger(__name__)
+        self.logger.setLevel(level)
+
+        # Create handlers
+        handler = logging.FileHandler(log_filename, delay=True)
+        handler.setLevel(level)
+
+        # Create format
+        handler_format = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s", datefmt='%d-%b-%y %H:%M:%S')
+
+        # Add format to the handler
+        handler.setFormatter(handler_format)
+
+        # Add handlers to the logger
+        self.logger.addHandler(handler)
+
     def check_local_information(self):
 
         # json file
@@ -219,10 +220,15 @@ class Client:
         else:
             data = {
                 'Install Directories': [],
-                'Skip Psutil': False
+                'Skip Psutil': True,
+                'Log Level': 0
             }
             with open(path, 'w') as outfile:
                 json.dump(data, outfile, indent=4)
+
+        # Read the settings and place them in self.settings
+        with open(path, 'r') as infile:
+            self.settings = json.load(infile)
 
     def check_db(self):
         """
@@ -230,6 +236,11 @@ class Client:
 
         :return:
         """
+
+        # Check for if the client was closed
+        if not self.summonerName:
+            self.logger.warning(f'Client has been quit during operations. Please refresh')
+            return
 
         # Create file for each user
         filename = "lol_" + self.summonerName + ".db"
@@ -299,12 +310,18 @@ class Client:
         basic_api_loading = True
         attempt = 1
 
+        # Track time for basic_api_loading
+        basic_time = time.time()
+
         # While the client is loading
         while basic_api_loading:
-            # If over 15 seconds for client to load, quit
-            if attempt > 15:
+            # If over 9 seconds for client to load, quit
+            if attempt > 9:
+                print("test")
                 self.clientRunning = False
                 self.lockfileFound = False
+                self.logger.warning('Basic API never loaded. Either client is slow, or was quit. Time taken:' +
+                                    f'{time.time()-basic_time}')
                 return
 
             try:
@@ -322,37 +339,35 @@ class Client:
                 attempt += 1
                 pass
 
-        # Get a response to see if parts of the client ares still loading
-        response = self.call_api(f'/lol-champions/v1/inventories/{self.summonerId}/champions-minimal')
-        try:
-            # If the client errors, it is still loading
-            if response['message'] == 'Champion data has not yet been received.':
+        # Check to see if client champion plugin is loading
+        champ_api_loading = True
+        attempt = 1
 
-                loading = True
-                num_seconds = 0
+        # Track time for basic_api_loading
+        champion_time = time.time()
 
-                # While the client is loading
-                while loading:
-                    # If over 15 seconds for client to load, quit
-                    if num_seconds > 15:
-                        self.clientRunning = False
-                        self.lockfileFound = False
+        while champ_api_loading:
+
+            # If over 9 seconds for client to load, quit
+            if attempt > 9:
+                self.clientRunning = False
+                self.lockfileFound = False
+                self.logger.warning('Champion API never loaded. Either client is slow, or was quit. Time taken' +
+                                    f':{time.time() - champion_time}')
+                return
+
+            try:
+                response = self.call_api(f'/lol-champions/v1/inventories/{self.summonerId}/champions-minimal')
+                if response['message'] == 'Champion data has not yet been received.':
+
                     # Wait 1 seconds then retry API call
+                    self.logger.warning(f'Champion API not fully loaded, attempt number {attempt}')
                     time.sleep(1)
-                    num_seconds += 1
-                    response = self.call_api(f'/lol-champions/v1/inventories/{self.summonerId}/champions-minimal')
+                    attempt += 1
+                    pass
 
-                    try:
-                        # If it failed, client is still loading and stay in while loop
-                        if response['message'] == 'Champion data has not yet been received.':
-                            self.logger.warning(f'Champion API not fully loaded, attempt number {num_seconds}')
-                            pass
-                    except (KeyError, TypeError, AttributeError):
-                        # If an error was generated, then it stopped loading
-                        loading = False
-        # Client is fully loaded, so pass
-        except (KeyError, TypeError, AttributeError):
-            pass
+            except (KeyError, TypeError, requests.exceptions.ConnectionError):
+                champ_api_loading = False
 
     def call_api(self, address):
         """
@@ -366,7 +381,6 @@ class Client:
             return None
         request = self.url + address
         response = requests.get(request, verify=False, headers=self.header)
-
         return json.loads(response.text)
 
     def call_api_image(self, address):
@@ -936,13 +950,12 @@ class Client:
         # Path to settings file (for saving)
         data_path = os.path.join(self.data_folder_name, r'local_machine_info.json')
 
-        if add_not_update():
-
+        if add_not_update:
             # Get current data of setting to add to
             setting_data = self.settings[setting]
 
-            if type(setting_data) is not list():
-                logging.debug("Set settings called with add instead of update, but no list found")
+            if not isinstance(setting_data, list):
+                self.logger.debug("Set settings called with add instead of update, but no list found")
                 return
             # Add current install path to list
             setting_data.append(value)
@@ -952,9 +965,9 @@ class Client:
         else:
             self.settings[setting] = value
 
-            # Write all install paths to the json file
-            with open(data_path, "w") as outfile:
-                json.dump(self.settings, outfile, indent=4)
+        # Write all install paths to the json file
+        with open(data_path, "w") as outfile:
+            json.dump(self.settings, outfile, indent=4)
 
 
 def sort_champs(champ):
