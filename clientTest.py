@@ -24,7 +24,7 @@ print("IP Min minus owned:", client.get_ip_needed("min", True, True), "\n")
 print("IP Current:", client.get_ip_needed("current", False, True))
 print("IP Current minus owned:", client.get_ip_needed("current", True, True), "\n")
 
-print("\n", "Champions by most recent played")
+print("Champions by most recent played")
 client.get_sorted_champs("lastPlayed", "desc", "name", "asc", True)
 
 print("\n", "Missions")
