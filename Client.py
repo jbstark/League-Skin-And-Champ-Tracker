@@ -3,6 +3,8 @@ import json
 import sqlite3
 import os
 import time
+import logging
+import logging.handlers
 from datetime import datetime
 
 import psutil
@@ -20,11 +22,42 @@ class Client:
         """
         Creates variables for find the client and lockfile. Then runs find client
         """
-
         # Create Data Folder for storing information
         self.data_folder_name = "data"
         if not os.path.exists(self.data_folder_name):
             os.makedirs(self.data_folder_name)
+
+        # Create log Folder for storing information
+        self.logs_folder_name = "logs"
+        if not os.path.exists(self.logs_folder_name):
+            os.makedirs(self.logs_folder_name)
+
+        # Get the file name
+        start = time.strftime("%Y-%m-%d-")
+        log_filename = os.path.join("logs", start)
+
+        # See if log file with name exists, and then try to increment log file by 1
+        i = 1
+        while os.path.exists(log_filename + "%s.log" % i):
+            i += 1
+        log_filename = log_filename + str(i) + ".log"
+
+        # Create Custom Logger
+        self.logger = logging.getLogger(__name__)
+        self.logger.setLevel(logging.DEBUG)
+
+        # Create handlers
+        handler = logging.FileHandler(log_filename, delay=True)
+        handler.setLevel(logging.DEBUG)
+
+        # Create format
+        handler_format = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s", datefmt='%d-%b-%y %H:%M:%S')
+
+        # Add format to the handler
+        handler.setFormatter(handler_format)
+
+        # Add handlers to the logger
+        self.logger.addHandler(handler)
 
         # Disable InsecureRequestWarning as the connection to the client cannot be secure
         requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
@@ -57,6 +90,7 @@ class Client:
         self.con_machine = None
 
         self.check_local_information()
+
         self.check_client_running()
 
     # Client Checking Functions
@@ -70,6 +104,9 @@ class Client:
 
         :return:
         """
+        # Log process
+        self.logger.info("Checking if client is loaded")
+
         # First check local machine info to see if there is a stored install path
         # read the json
         data_path = os.path.join(self.data_folder_name, r'local_machine_info.json')
@@ -88,8 +125,14 @@ class Client:
         # Look for the lockfile using the stored directories
         self.find_lockfile()
 
-        # If the lockfile was found, we don't need psutil and can skip this part. Also see if we should skip psutil
-        if self.lockfileFound or skip_psutil:
+        # If the lockfile was found, we don't need psutil and can skip this part.
+        if self.lockfileFound:
+            return
+
+        # If we can skip psutil, then the client must not be running, or is running but incorrect path
+        if skip_psutil:
+            self.logger.info("The League of Legends client is not running, or is running but an incorrect path is set."
+                             "Please update the path, or allow for automatic checking of processes in settings")
             return
 
         # If no lockfile was found using the stored install directories use psutil to find process
@@ -109,7 +152,9 @@ class Client:
 
             # Client was running, but Lockfile was not found. Error and quit
             if self.lockfileFound is False:
-                exit("Lockfile not found")
+                logging.error("The lockfile was not found, but the client is running")
+        else:
+            logging.info("The League of Legends client is not running")
 
     def find_lockfile(self):
         """
@@ -128,6 +173,7 @@ class Client:
                 with open(lockfile, 'r') as f:
                     file_contents = f.read().split(":")
                 # Lockfile is found
+                self.logger.info("Client running. Lockfile found")
                 self.lockfileFound = True
                 self.clientRunning = True
                 self.currentDirectory = lockfile
@@ -250,19 +296,16 @@ class Client:
         :return:
         """
         # Check to see if client is loading
-        loading = True
-        num_seconds = 0
+        basic_api_loading = True
+        attempt = 1
 
         # While the client is loading
-        while loading:
+        while basic_api_loading:
             # If over 15 seconds for client to load, quit
-            if num_seconds > 15:
+            if attempt > 15:
                 self.clientRunning = False
                 self.lockfileFound = False
                 return
-            # Wait 1 seconds then retry API call
-            time.sleep(1)
-            num_seconds += 1
 
             try:
                 # Get summonerID of logged in user
@@ -271,8 +314,12 @@ class Client:
                 self.summonerName = self.summonerInfo["displayName"]
                 self.currentPatch = self.call_api('/system/v1/builds')['version']
 
-                loading = False
+                basic_api_loading = False
             except (KeyError, requests.exceptions.ConnectionError):
+                self.logger.warning(f'Basic API not fully loaded, attempt number {attempt}')
+                # Wait 1 seconds then retry API call
+                time.sleep(1)
+                attempt += 1
                 pass
 
         # Get a response to see if parts of the client ares still loading
@@ -298,6 +345,7 @@ class Client:
                     try:
                         # If it failed, client is still loading and stay in while loop
                         if response['message'] == 'Champion data has not yet been received.':
+                            self.logger.warning(f'Champion API not fully loaded, attempt number {num_seconds}')
                             pass
                     except (KeyError, TypeError, AttributeError):
                         # If an error was generated, then it stopped loading
@@ -872,6 +920,41 @@ class Client:
 
     def get_current_tokens(self):
         return self.con.execute("SELECT eventTokens FROM Player").fetchone()[0]
+
+    # Setter functions
+
+    def set_local_settings(self, setting, value, add_not_update):
+        """
+        Set local settings for the user stored in local_machine_info.json
+
+        :param setting:
+        :param value:
+        :param add_not_update:
+        :return:
+        """
+
+        # Path to settings file (for saving)
+        data_path = os.path.join(self.data_folder_name, r'local_machine_info.json')
+
+        if add_not_update():
+
+            # Get current data of setting to add to
+            setting_data = self.settings[setting]
+
+            if type(setting_data) is not list():
+                logging.debug("Set settings called with add instead of update, but no list found")
+                return
+            # Add current install path to list
+            setting_data.append(value)
+            # Create a set to remove duplicates
+            self.settings[setting] = list(set(setting_data))
+
+        else:
+            self.settings[setting] = value
+
+            # Write all install paths to the json file
+            with open(data_path, "w") as outfile:
+                json.dump(self.settings, outfile, indent=4)
 
 
 def sort_champs(champ):
