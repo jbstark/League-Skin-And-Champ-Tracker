@@ -51,6 +51,9 @@
           <enum>QFrame::Raised</enum>
          </property>
          <layout class="QVBoxLayout" name="left_panel_frame_vertical_layout">
+          <property name="leftMargin">
+           <number>0</number>
+          </property>
           <property name="bottomMargin">
            <number>0</number>
           </property>
@@ -75,6 +78,9 @@
              </size>
             </property>
             <layout class="QVBoxLayout" name="settings_vertical_layout">
+             <property name="leftMargin">
+              <number>0</number>
+             </property>
              <item>
               <widget class="QFrame" name="sort_frame">
                <property name="frameShape">
@@ -297,7 +303,7 @@
                <rect>
                 <x>0</x>
                 <y>0</y>
-                <width>624</width>
+                <width>633</width>
                 <height>571</height>
                </rect>
               </property>
@@ -321,7 +327,7 @@
                <rect>
                 <x>0</x>
                 <y>0</y>
-                <width>624</width>
+                <width>633</width>
                 <height>571</height>
                </rect>
               </property>
@@ -352,7 +358,7 @@
                <rect>
                 <x>0</x>
                 <y>0</y>
-                <width>624</width>
+                <width>633</width>
                 <height>571</height>
                </rect>
               </property>
