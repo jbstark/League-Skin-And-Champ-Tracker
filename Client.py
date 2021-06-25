@@ -32,7 +32,7 @@ class Client:
 
         # Load user settings
         self.new_keys = {}
-        self.check_local_information()
+        self.check_settings()
 
         # Create the logger
         self.logs_folder_name = "logs"
@@ -214,7 +214,7 @@ class Client:
             self.logger.info(f"Key {key} was missing from user settings. " +
                              f"Added with default value of {self.new_keys[key]}")
 
-    def check_local_information(self):
+    def check_settings(self):
 
         # json file
         path = os.path.join(self.data_folder_name, r'settings.json')
@@ -382,7 +382,6 @@ class Client:
             try:
                 response = self.call_api(f'/lol-champions/v1/inventories/{self.summonerId}/champions-minimal')
                 if response['message'] == 'Champion data has not yet been received.':
-
                     # Wait 1 seconds then retry API call
                     self.logger.warning(f'Champion API not fully loaded, attempt number {attempt}')
                     time.sleep(1)
@@ -447,6 +446,9 @@ class Client:
         # Execute update
         self.con.execute(f'UPDATE {table} SET {column} = {data} WHERE {row} = {comparison}')
 
+        # Commit the changes
+        self.con.commit()
+
     # Update Functions
 
     def update(self):
@@ -475,18 +477,11 @@ class Client:
         account_id = self.summonerInfo["accountId"]
         summoner_level = self.summonerInfo["summonerLevel"]
 
-        # Store Info
-        store_info = self.call_api("/lol-store/v1/wallet")
-        be = store_info["ip"]
-        rp = store_info["rp"]
-
         # Update player information
         self.con.execute(f'INSERT or IGNORE INTO Player (username) VALUES (?)', (self.summonerName,))
         self.add_to_database("Player", "username", self.summonerName, "summonerID", self.summonerId)
         self.add_to_database("Player", "username", self.summonerName, "accountID", account_id)
         self.add_to_database("Player", "username", self.summonerName, "level", summoner_level)
-        self.add_to_database("Player", "username", self.summonerName, "blueEssence", be)
-        self.add_to_database("Player", "username", self.summonerName, "riotPoints", rp)
 
         self.update_user_loot()
 
@@ -536,6 +531,11 @@ class Client:
 
                 event_running = True
 
+            # Blue Essence
+            elif item['asset'] == "currency_champion":
+                be = item["count"]
+                self.add_to_database("Player", "username", self.summonerName, "blueEssence", be)
+
         if not event_running:
             # Add event name
             self.add_to_database("Player", "username", self.summonerName, "eventName", None)
@@ -546,7 +546,16 @@ class Client:
             # Add event material name
             self.add_to_database("Player", "username", self.summonerName, "eventLootID", None)
 
-        self.con.commit()
+    def update_rp(self):
+        """
+        Updates the rp in the db
+        :return:
+        """
+        response_json = self.call_api("/lol-store/v1/wallet")
+        print(response_json)
+        rp = response_json["rp"]
+        self.add_to_database("Player", "username", self.summonerName, "riotPoints", rp)
+        return rp
 
     def update_all_champions(self):
         """
@@ -578,7 +587,6 @@ class Client:
                 # Add Owned Status to Database
                 owned = int(champion["ownership"]["owned"])
                 self.add_to_database("Champions", "name", champion_name, "owned", owned)
-        self.con.commit()
 
         # Update other columns
         self.update_champion_costs()
@@ -606,7 +614,6 @@ class Client:
             name = champion["localizations"][localization]["name"]
             ip_cost = str(champion["prices"][0]["cost"])
             self.add_to_database("Champions", "name", name, "cost", ip_cost)
-        self.con.commit()
 
     def update_mastery_and_date(self):
         """
@@ -628,7 +635,6 @@ class Client:
             date = champion['lastPlayTime']
             self.add_to_database("Champions", "championID", champion["championId"], "championMastery", mastery_level)
             self.add_to_database("Champions", "championID", champion["championId"], "lastPlayed", date)
-        self.con.commit()
 
     def update_champion_loot(self):
         """
@@ -671,8 +677,6 @@ class Client:
         # All champions with no tokens should be set to null
         for champ in all_champs_tokens:
             self.add_to_database("Champions", "name", champ, "masteryTokens", 0)
-
-        self.con.commit()
 
     # Get functions
 
@@ -778,11 +782,7 @@ class Client:
 
         # If the program should subtract IP in the account, get the current_ip
         if subtract_owned:
-            response_json = self.call_api("/lol-store/v1/wallet")
-            # if the API call fails
-            if response_json is None:
-                return "Client not connected. Please refresh"
-            current_ip = response_json["ip"]
+            current_ip = self.con.execute("SELECT blueEssence FROM Player").fetchone()[0]
 
         # Get the maximum cost of all unowned champions
         maximum = self.con.execute("SELECT SUM (cost) FROM Champions WHERE owned = 0").fetchone()[0]
