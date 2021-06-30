@@ -900,7 +900,7 @@ class Client:
 
         if days_left < 0:
             self.logger.info(f"Tried to get tokens per day for {target}, but tokens can no longer be earned")
-            return "Event has ended"
+            return "Tokens can no longer be earned"
 
         if target is None or target == 0:
             self.logger.warning(f"No target specified")
