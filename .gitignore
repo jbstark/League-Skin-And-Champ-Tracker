@@ -5,6 +5,7 @@ lol_*
 local_machine_info.db
 /data/
 /logs/
+personalTest.py
 
 #Default python ignore
 
