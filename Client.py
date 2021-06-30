@@ -135,6 +135,7 @@ class Client:
 
                 self.build_api(port, password)
                 self.check_db()
+                self.update()
 
                 return True
             except FileNotFoundError:
@@ -479,6 +480,9 @@ class Client:
                 # Add ID to Database
                 champion_id = champion['id']
                 self.add_to_database("Champions", "name", champion_name, "championID", champion_id)
+
+                # Add Owned Status
+                self.add_to_database("Champions", "name", champion_name, "owned", int(champion["ownership"]["owned"]))
             if champion['name'] in unowned_champions:
                 # Add Owned Status to Database
                 if int(champion["ownership"]["owned"]) != 0:
@@ -808,7 +812,7 @@ class Client:
 
         except AssertionError:
             # Either no champs unowned, or user has enough IP
-            return 0
+            return "0"
 
     def get_event_missions(self):
         """
