@@ -44,14 +44,16 @@
 
 from PyQt5.QtCore import QPoint, QRect, QSize, Qt
 from PyQt5.QtWidgets import (QApplication, QLayout, QPushButton, QSizePolicy,
-        QWidget)
+        QWidget, QMainWindow)
 
 
 class Window(QWidget):
     def __init__(self):
         super(Window, self).__init__()
 
+        self.setObjectName("win")
         flowLayout = FlowLayout()
+
         flowLayout.addWidget(QPushButton("Short"))
         flowLayout.addWidget(QPushButton("Longer"))
         flowLayout.addWidget(QPushButton("Different text"))
@@ -128,6 +130,9 @@ class FlowLayout(QLayout):
         x = rect.x()
         y = rect.y()
         lineHeight = 0
+        
+        if self.geometry().width() > self.itemList[0].widget().width():
+            self.calculate_spacing()
 
         for item in self.itemList:
             wid = item.widget()
@@ -147,6 +152,15 @@ class FlowLayout(QLayout):
             lineHeight = max(lineHeight, item.sizeHint().height())
 
         return y + lineHeight - rect.y()
+    
+    def calculate_spacing(self):
+        width = self.geometry().width() - (2 * self.getContentsMargins()[0])
+        num_columns = int(width / self.itemList[0].widget().width())
+        if self.itemList[0].widget().width() * len(self.itemList) > self.geometry().width():
+            total_widget_width = num_columns * self.itemList[0].widget().width()
+            total_spacing = width - total_widget_width
+            spacing = int(total_spacing / (num_columns - 1))
+            self.setSpacing(spacing)
 
 
 if __name__ == '__main__':
