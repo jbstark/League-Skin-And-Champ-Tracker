@@ -23,7 +23,6 @@ Data is stored per user in /data. To read this outside of the client use a db re
 # Frequently Asked Questions
 
 - [Why did it fail to connect while the league client was open](#Why-did-it-fail-to-connect-while-the-league-client-was-open)
-- []
 
 
 ## Why did it fail to connect while the league client was open
