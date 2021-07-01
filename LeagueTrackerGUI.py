@@ -67,7 +67,7 @@ class CurrentEventDetailsWidget(QtWidgets.QWidget):
 
 
 class IconWidget(QtWidgets.QFrame):
-    def __init__(self, name="", api_call_path="", cost=0, client=None, width=160, height=200, parent=None, *args, **kwargs):
+    def __init__(self, name="", api_call_path="", cost=0, client=None, width=200, height=250, parent=None, *args, **kwargs):
         super().__init__(parent=parent, *args, **kwargs)
     
         self.setObjectName(f"icon_frame_{name}")

@@ -43,7 +43,7 @@
 
 
 from PyQt5.QtCore import QPoint, QRect, QSize, Qt
-from PyQt5.QtWidgets import (QApplication, QLayout, QPushButton, QSizePolicy,
+from PyQt5.QtWidgets import (QApplication, QLayout, QGridLayout, QPushButton, QSizePolicy,
         QWidget, QMainWindow)
 
 
@@ -64,7 +64,7 @@ class Window(QWidget):
         self.setWindowTitle("Flow Layout")
 
 
-class FlowLayout(QLayout):
+class FlowLayout(QGridLayout):
     def __init__(self, parent=None, margin=0, spacing=-1):
         super(FlowLayout, self).__init__(parent)
 
@@ -136,8 +136,8 @@ class FlowLayout(QLayout):
 
         for item in self.itemList:
             wid = item.widget()
-            spaceX = self.spacing() + wid.style().layoutSpacing(QSizePolicy.PushButton, QSizePolicy.PushButton, Qt.Horizontal)
-            spaceY = self.spacing() + wid.style().layoutSpacing(QSizePolicy.PushButton, QSizePolicy.PushButton, Qt.Vertical)
+            spaceX = self.horizontalSpacing() + wid.style().layoutSpacing(QSizePolicy.PushButton, QSizePolicy.PushButton, Qt.Horizontal)
+            spaceY = self.verticalSpacing() + wid.style().layoutSpacing(QSizePolicy.PushButton, QSizePolicy.PushButton, Qt.Vertical)
             nextX = x + item.sizeHint().width() + spaceX
             if nextX - spaceX > rect.right() and lineHeight > 0:
                 x = rect.x()
@@ -156,11 +156,11 @@ class FlowLayout(QLayout):
     def calculate_spacing(self):
         width = self.geometry().width() - (2 * self.getContentsMargins()[0])
         num_columns = int(width / self.itemList[0].widget().width())
-        if self.itemList[0].widget().width() * len(self.itemList) > self.geometry().width():
+        if self.itemList[0].widget().width() * len(self.itemList) > self.geometry().width() and num_columns > 1:
             total_widget_width = num_columns * self.itemList[0].widget().width()
             total_spacing = width - total_widget_width
             spacing = int(total_spacing / (num_columns - 1))
-            self.setSpacing(spacing)
+            self.setHorizontalSpacing(spacing)
 
 
 if __name__ == '__main__':
