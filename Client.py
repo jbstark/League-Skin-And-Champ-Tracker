@@ -536,9 +536,8 @@ class Client:
             mastery_level = champion['championLevel']
             # Last date mastery points were gained on a champion, NOT last played (bots don't count)
             date = champion['lastPlayTime']
-            if mastery_level != 7:
-                self.add_to_database("Champions", "championID", champion["championId"],
-                                     "championMastery", mastery_level)
+            self.add_to_database("Champions", "championID", champion["championId"], "championMastery", mastery_level)
+            self.add_to_database("Champions", "championID", champion["championId"], "masteryTokens", 0)
             self.add_to_database("Champions", "championID", champion["championId"], "lastPlayed", date)
 
     def update_loot(self):
