@@ -1,4 +1,6 @@
+import SidebarInformationWidget
 from QtGUI import Ui_MainWindow
+from SidebarInformationWidget import Ui_sidebar_tab_info_stacked_widget
 from Client import Client
 from flowlayout import FlowLayout
 from PyQt5 import QtWidgets, QtCore, QtGui
@@ -6,64 +8,59 @@ from datetime import datetime
 from PyQt5 import QtTest
 
 
-class CurrentEventDetailsWidget(QtWidgets.QWidget):
+def create_client_refresh_messageBox(firstOpen, parent=None):
+    """
+    Creates a QMessageBox popup window allowing the user to either close the program or try to find the client process.
+
+    :param firstOpen:
+    :param parent: Qt object containing the message box.
+    :return: A QMessageBox window object with a message and 'Retry' and 'Close' buttons.
+    """
+    if firstOpen:
+        text = "League of Legends client is not running. Check again?"
+    else:
+        text = "League of Legends has been quit. Please reopen and check again."
+    client_refresh_messageBox = QtWidgets.QMessageBox(parent)
+    client_refresh_messageBox.setIcon(QtWidgets.QMessageBox.Warning)
+    client_refresh_messageBox.setText(text)
+    client_refresh_messageBox.setWindowTitle("Client Not Running")
+    client_refresh_messageBox.setStandardButtons(QtWidgets.QMessageBox.Retry | QtWidgets.QMessageBox.Close)
+    client_refresh_messageBox.setDefaultButton(QtWidgets.QMessageBox.Retry)
+    client_refresh_messageBox.setEscapeButton(QtWidgets.QMessageBox.Close)
+    client_refresh_messageBox.buttonClicked.connect(client_refresh_button_clicked)
+    return client_refresh_messageBox
+
+
+def client_refresh_button_clicked(i):
+    """
+    Defines the action to be taken when the user clicks a button in the client refresh message box window.
+
+    :param i: Contains information about the button pressed.
+    """
+    if i.text() == "Close":
+        sys.exit()
+
+
+class SidebarInfoWidget(QtWidgets.QStackedWidget):
     def __init__(self, client, parent=None, *args, **kwargs):
         super().__init__(parent=parent, *args, **kwargs)
         
+        self.ui = Ui_sidebar_tab_info_stacked_widget()
+        self.ui.setupUi(self)
+        
         self.setObjectName("current_event_details_widget")
-        self.setMaximumSize(300, 300)
+        self.ui.target_tokens_lineEdit.setValidator(
+            QtGui.QIntValidator(0, (2 ** 31) - 1, self.ui.target_tokens_lineEdit.parent()))
         
-        self.current_event_widget_vertical_layout = QtWidgets.QVBoxLayout(self)
-        self.current_event_widget_vertical_layout.setObjectName("current_event_widget_vertical_layout")
-        
-        self.token_target_frame = QtWidgets.QFrame(self)
-        self.token_target_frame.setFrameShape(QtWidgets.QFrame.StyledPanel)
-        self.token_target_frame.setFrameShadow(QtWidgets.QFrame.Raised)
-        self.token_target_frame.setObjectName("token_target_frame")
-        
-        self.token_target_frame_horizontal_layout = QtWidgets.QHBoxLayout(self.token_target_frame)
-        self.token_target_frame_horizontal_layout.setObjectName("token_target_frame_horizontal_layout")
-        self.token_target_frame_horizontal_layout.setContentsMargins(0, 9, 9, 9)
-        
-        self.token_target_frame_label = QtWidgets.QLabel(self.token_target_frame)
-        self.token_target_frame_label.setObjectName("token_target_frame_label")
-        self.token_target_frame_horizontal_layout.addWidget(self.token_target_frame_label)
-        
-        self.token_target_frame_input_lineedit = QtWidgets.QLineEdit(self.token_target_frame)
-        self.token_target_frame_input_lineedit.setObjectName("token_target_frame_input_lineedit")
-        self.token_target_frame_input_lineedit.setValidator(
-            QtGui.QIntValidator(0, (2**31)-1, self.token_target_frame_input_lineedit.parent()))
-        self.token_target_frame_horizontal_layout.addWidget(self.token_target_frame_input_lineedit)
-        
-        self.current_event_widget_vertical_layout.addWidget(self.token_target_frame)
-        
-        self.current_event_current_tokens_label = QtWidgets.QLabel(self)
-        self.current_event_current_tokens_label.setObjectName("current_event_current_tokens_label")
-        self.current_event_widget_vertical_layout.addWidget(self.current_event_current_tokens_label)
-        
-        self.current_event_target_tokens_per_day_label = QtWidgets.QLabel(self)
-        self.current_event_target_tokens_per_day_label.setObjectName("current_event_target_tokens_per_day_label")
-        self.current_event_widget_vertical_layout.addWidget(self.current_event_target_tokens_per_day_label)
-        
-        _translate = QtCore.QCoreApplication.translate
-        self.setWindowTitle(_translate("current_event_details_widget", "Form"))
-        self.token_target_frame_label.setText(_translate("current_event_details_widget", "Enter target tokens:"))
-        self.current_event_current_tokens_label.setText(_translate("current_event_details_widget",
-                                                                   f"Current tokens: {client.get_current_tokens()}"))
-        self.current_event_target_tokens_per_day_label.setText(
-            _translate("current_event_details_widget", "Tokens needed per day: "))
-        
-        QtCore.QMetaObject.connectSlotsByName(self)
-        
-        self.token_target_frame_input_lineedit.textEdited.connect(lambda: self.text_edited(client))
+        self.ui.target_tokens_lineEdit.textEdited.connect(lambda: self.text_edited(client))
     
     def text_edited(self, client):
-        new_text = self.token_target_frame_input_lineedit.text()
+        new_text = self.ui.target_tokens_lineEdit.text()
         try:
-            self.current_event_target_tokens_per_day_label.setText(
+            self.ui.tokens_per_day_label.setText(
                 f"Tokens needed per day: {client.get_tokens_per_day(int(new_text))}")
         except ValueError:
-            self.current_event_target_tokens_per_day_label.setText("Tokens needed per day: ")
+            self.ui.tokens_per_day_label.setText("Tokens needed per day: ")
 
 
 class IconWidget(QtWidgets.QFrame):
@@ -140,39 +137,6 @@ class IconWidget(QtWidgets.QFrame):
         QtCore.QMetaObject.connectSlotsByName(self)
 
 
-def create_client_refresh_messageBox(firstOpen, parent=None):
-    """
-    Creates a QMessageBox popup window allowing the user to either close the program or try to find the client process.
-
-    :param firstOpen:
-    :param parent: Qt object containing the message box.
-    :return: A QMessageBox window object with a message and 'Retry' and 'Close' buttons.
-    """
-    if firstOpen:
-        text = "League of Legends client is not running. Check again?"
-    else:
-        text = "League of Legends has been quit. Please reopen and check again."
-    client_refresh_messageBox = QtWidgets.QMessageBox(parent)
-    client_refresh_messageBox.setIcon(QtWidgets.QMessageBox.Warning)
-    client_refresh_messageBox.setText(text)
-    client_refresh_messageBox.setWindowTitle("Client Not Running")
-    client_refresh_messageBox.setStandardButtons(QtWidgets.QMessageBox.Retry | QtWidgets.QMessageBox.Close)
-    client_refresh_messageBox.setDefaultButton(QtWidgets.QMessageBox.Retry)
-    client_refresh_messageBox.setEscapeButton(QtWidgets.QMessageBox.Close)
-    client_refresh_messageBox.buttonClicked.connect(client_refresh_button_clicked)
-    return client_refresh_messageBox
-
-
-def client_refresh_button_clicked(i):
-    """
-    Defines the action to be taken when the user clicks a button in the client refresh message box window.
-
-    :param i: Contains information about the button pressed.
-    """
-    if i.text() == "Close":
-        sys.exit()
-
-
 class TrackerWindow(QtWidgets.QMainWindow):
     
     def __init__(self, *args, **kwargs):
@@ -193,7 +157,7 @@ class TrackerWindow(QtWidgets.QMainWindow):
         self.setup_current_event_tab_layout()
     
         self.last_refresh_time = None
-        self.current_event_widget = None
+        self.sidebar_info_widget = None
     
         self.client = Client()
         while not self.client.clientRunning:
@@ -202,22 +166,17 @@ class TrackerWindow(QtWidgets.QMainWindow):
         self.refresh()
     
         self.ui.tab_widget.currentChanged.connect(self.new_tab_selected)
+        self.create_sidebar_info_widget()
         self.new_tab_selected()
         self.populate_current_event_tab()
     
     def new_tab_selected(self):
         if self.ui.tab_widget.tabText(self.ui.tab_widget.currentIndex()) == "Current Event":
-            self.current_event_widget = self.current_event_sidebar()
-            self.ui.left_panel_frame_vertical_layout.addWidget(self.current_event_widget,
-                                                               alignment=QtCore.Qt.AlignLeft | QtCore.Qt.AlignTop)
-        else:
-            if not (self.current_event_widget is None):
-                self.ui.left_panel_frame_vertical_layout.removeWidget(self.current_event_widget)
-                self.current_event_widget.deleteLater()
-                self.current_event_widget = None
-    
-    def current_event_sidebar(self):
-        return CurrentEventDetailsWidget(self.client, parent=self.ui.left_panel_frame)
+            self.sidebar_info_widget.setCurrentIndex(2)
+            
+    def create_sidebar_info_widget(self):
+        self.sidebar_info_widget = SidebarInfoWidget(self.client, parent=self.ui.left_panel_frame)
+        self.ui.left_panel_frame_vertical_layout.addWidget(self.sidebar_info_widget)
     
     def populate_current_event_tab(self):
         """Adds all purchasable item widgets to the current event tab."""
