@@ -123,7 +123,10 @@ class IconWidget(QtWidgets.QFrame):
         self.cost_label.setObjectName(f"{name}_cost_label")
         self.cost_label.setWordWrap(True)
         if isinstance(cost, int):
-            self.cost_label.setText(f"{cost} tokens")
+            if cost == 1:
+                self.cost_label.setText(f"{cost} token")
+            else:
+                self.cost_label.setText(f"{cost} tokens")
         else:
             self.cost_label.setText(f"{cost}")
         self.icon_frame_qvboxlayout.addWidget(self.cost_label)
