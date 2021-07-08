@@ -248,7 +248,7 @@ class Client:
                           ("blueEssence", "INTEGER"), ("riotPoints", "INTEGER"), ("eventName", "TEXT"),
                           ("eventTokens", "INTEGER"), ("eventLootID", "INTEGER"), ("tokenEndDate", "INTEGER"),
                           ("shopEndDate", "INTEGER"), ("oldEventName", "INTEGER"), ("oldEventTokens", "INTEGER"),
-                          ("oldEventLootID", "INTEGER"), ("oldShopEndDate", "INTEGER")]
+                          ("oldEventLootID", "INTEGER"), ("oldShopEndDate", "INTEGER"), ("passOwned", "INTEGER")]
 
         with self.con:
             self.con.execute("CREATE TABLE if not exists Champions (name TEXT UNIQUE)")
@@ -640,6 +640,7 @@ class Client:
             self.add_to_database("Player", "username", self.summonerName, "eventLootID", None)
             self.add_to_database("Player", "username", self.summonerName, "tokenEndDate", None)
             self.add_to_database("Player", "username", self.summonerName, "shopEndDate", None)
+            self.add_to_database("Player", "username", self.summonerName, "passOwned", None)
 
         # Check if there is an old event
         if self.con.execute("SELECT oldEventTokens FROM Player").fetchone()[0]:
@@ -663,6 +664,7 @@ class Client:
         # Can I get rid of this call?
         store = self.call_api("/lol-store/v1/featured")
         old_event_name = self.con.execute("SELECT oldEventName FROM Player").fetchone()[0]
+
         # If there is an old event name, then just use this garbage string
         if not old_event_name:
             old_event_name = "lfkaofjhqaghpiqoghgad"
@@ -719,7 +721,7 @@ class Client:
                             # Bundles end 2 hours before shop, add 2 hours. * 1000 for milliseconds
                             shop_end = (shop_end + timedelta(hours=2)).timestamp() * 1000
                             self.add_to_database("Player", "username", self.summonerName, "shopEndDate", shop_end)
-                            return
+
                         except KeyError:
                             pass
 
@@ -901,7 +903,7 @@ class Client:
                 event_missions.append(mission)
         return event_missions
 
-    def get_event_shop(self):
+    def get_event_shop(self, old):
         """
         Gets the event shop as a list of dictionaries for each item
 
@@ -912,11 +914,13 @@ class Client:
 
         # TODO check for owned content for events (grey out image if you own the max or the amount wanted?)
         shop = []
-
-        event_id = self.con.execute("SELECT eventLootID FROM Player")
+        if old:
+            event_id = self.con.execute("SELECT oldEventLootID FROM Player")
+        else:
+            event_id = self.con.execute("SELECT eventLootID FROM Player")
 
         if event_id is None:
-            self.logger.warning(f"Event not running, or shop not found")
+            self.logger.warning(f"Event where old is {old} is not running, or shop not found")
             return
 
         shop_items = self.call_api(f"/lol-loot/v1/recipes/initial-item/{event_id.fetchone()[0]}")
@@ -933,6 +937,7 @@ class Client:
 
             # See if loot is owned
             owned = False
+            price = item["slots"][0]["quantity"]
 
             # Looking for upcoming shop items not purchasable now
             try:
@@ -940,12 +945,10 @@ class Client:
                 loot = self.call_api(f"/lol-loot/v1/player-loot/{output}")
                 if loot["redeemableStatus"] == "ALREADY_OWNED":
                     owned = True
-
             except IndexError:
-                output = item['description']
-                owned = False
+                price = 0
 
-            shop.append((item["contextMenuText"], image_path, item["slots"][0]["quantity"], owned))
+            shop.append((item["contextMenuText"], image_path, price, owned))
 
         shop_alphabet_sorted = sorted(shop, key=lambda t: (t[0]), reverse=False)
         shop_cost_sorted = sorted(shop_alphabet_sorted, key=lambda t: (t[2]), reverse=True)
@@ -980,7 +983,26 @@ class Client:
             self.logger.warning(f"No target specified")
             return "No target tokens"
 
-        total_tokens = self.get_current_tokens()
+        # Check if pass is bought:
+        self.logger.info(f"Checking if the pass is owned")
+
+        if not self.con.execute("SELECT passOwned FROM Player").fetchone()[0]:
+            self.logger.debug(f"Pass owned status not stored")
+            pass_owned = False
+            store = self.call_api("/lol-store/v1/featured")
+            for item in store["catalog"]:
+                if item['inventoryType'] == "BUNDLES":
+                    for loot in item['bundleItems']:
+                        if loot["name"].find("Pass") != -1:
+                            if loot["owned"]:
+                                self.logger.debug(f"Found out that the pass is owned")
+                                pass_owned = True
+                                self.add_to_database("Player", "username", self.summonerName, "passOwned", True)
+                                break
+            if not pass_owned:
+                return "Pass not owned"
+
+        total_tokens = self.get_current_tokens(False)
 
         event_name = self.con.execute("SELECT eventName FROM Player").fetchone()[0]
 
@@ -992,6 +1014,8 @@ class Client:
             tokens_from_missions_left = 1815
         else:
             tokens_from_missions_left = 1500
+
+        # Check to see if the pass was bought
 
         earned_from_missions = 200
 
@@ -1018,15 +1042,22 @@ class Client:
             return "Goal met"
         return tokens_per_day
 
-    def get_current_tokens(self):
+    def get_current_tokens(self, old):
         """
-
+        :param old: Boolean of whether to look for an old event or running event
         :return: The current tokens in the db (update should be called before)
         """
-        self.logger.info("Getting current tokens.")
-        tokens = self.con.execute("SELECT eventTokens FROM Player").fetchone()[0]
+
+        self.logger.info(f"Getting current tokens where old is {old}.")
+
+        if old:
+            tokens = self.con.execute("SELECT oldEventTokens FROM Player").fetchone()[0]
+        else:
+            tokens = self.con.execute("SELECT eventTokens FROM Player").fetchone()[0]
+
         if tokens is None:
-            self.logger.warning(f"Event not running")
+            self.logger.warning(f"Event where old is {old} not running")
+
         return tokens
 
     # Setter functions
