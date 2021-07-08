@@ -180,11 +180,13 @@ class TrackerWindow(QtWidgets.QMainWindow):
     
     def populate_current_event_tab(self):
         """Adds all purchasable item widgets to the current event tab."""
-        event_shop = self.client.get_event_shop()
+        event_shop = self.client.get_event_shop(False)
         for item in event_shop:
             cost = item[2]
             if item[3]:
                 cost = "Owned"
+            elif item[2] == 0:
+                cost = "Unknown"
             self.ui.current_event_tab_scroll_area_widget_contents_layout.addWidget(
                 IconWidget(
                     item[0], item[1], cost, self.client, parent=self.ui.current_event_tab_scroll_area_widget_contents))
