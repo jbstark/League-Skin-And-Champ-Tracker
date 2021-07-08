@@ -53,6 +53,13 @@ class Client:
         # For connection to champions.db
         self.con = None
 
+        # Timezones and their offsets
+        # This looks really dumb, and is, but python cannot convert from a timezone string to a utc offset
+        # This is needed to find the token end time, when the player has no event missions
+        # This should be updated manually, until ALL riot timezones stored are added.
+        # If you have any better ideas PLEASE help
+        self.time_zones = {"PT": "-0700"}
+
         self.check_client_running()
 
     # Client Checking Functions
@@ -240,7 +247,8 @@ class Client:
         columns_player = [("summonerID", "INTEGER"), ("accountID", "INTEGER"), ("level", "INTEGER"),
                           ("blueEssence", "INTEGER"), ("riotPoints", "INTEGER"), ("eventName", "TEXT"),
                           ("eventTokens", "INTEGER"), ("eventLootID", "INTEGER"), ("tokenEndDate", "INTEGER"),
-                          ("shopEndDate", "INTEGER")]
+                          ("shopEndDate", "INTEGER"), ("oldEventName", "INTEGER"), ("oldEventTokens", "INTEGER"),
+                          ("oldEventLootID", "INTEGER"), ("oldShopEndDate", "INTEGER")]
 
         with self.con:
             self.con.execute("CREATE TABLE if not exists Champions (name TEXT UNIQUE)")
@@ -599,19 +607,50 @@ class Client:
 
         self.logger.info(f"Starting Update Event")
 
-        shop_end_time = self.con.execute("SELECT shopEndDate FROM Player").fetchone()[0]
+        old_shop_end_time = self.con.execute("SELECT oldShopEndDate FROM Player").fetchone()[0]
 
-        # Shop has closed
-        if shop_end_time and time.time() > shop_end_time:
+        # Event that had a shop, but no earning tokens is over
+        if old_shop_end_time and time.time()*1000 > old_shop_end_time:
             # Event is fully over
             self.logger.info("Event not running, as the token shop has closed")
+            self.add_to_database("Player", "username", self.summonerName, "oldEventName", None)
+            self.add_to_database("Player", "username", self.summonerName, "oldEventTokens", None)
+            self.add_to_database("Player", "username", self.summonerName, "oldEventLootID", None)
+            self.add_to_database("Player", "username", self.summonerName, "oldShopEndDate", None)
+
+        token_end_time = self.con.execute("SELECT tokenEndDate FROM Player").fetchone()[0]
+
+        # If token earning has closed
+        if token_end_time and time.time()*1000 > token_end_time:
+            self.logger.info("Tokens can no longer be earned, so migrating info to oldEvent")
+            # Move information to old event
+            old_event_name = self.con.execute("SELECT eventName FROM Player").fetchone()[0]
+            old_event_tokens = self.con.execute("SELECT eventTokens FROM Player").fetchone()[0]
+            old_event_id = self.con.execute("SELECT eventLootID FROM Player").fetchone()[0]
+            old_shop_end = self.con.execute("SELECT shopEndDate FROM Player").fetchone()[0]
+
+            self.add_to_database("Player", "username", self.summonerName, "oldEventName", old_event_name)
+            self.add_to_database("Player", "username", self.summonerName, "oldEventTokens", old_event_tokens)
+            self.add_to_database("Player", "username", self.summonerName, "oldEventLootID", old_event_id)
+            self.add_to_database("Player", "username", self.summonerName, "oldShopEndDate", old_shop_end)
+
+            # Remove information from current event
             self.add_to_database("Player", "username", self.summonerName, "eventName", None)
             self.add_to_database("Player", "username", self.summonerName, "eventTokens", None)
             self.add_to_database("Player", "username", self.summonerName, "eventLootID", None)
             self.add_to_database("Player", "username", self.summonerName, "tokenEndDate", None)
             self.add_to_database("Player", "username", self.summonerName, "shopEndDate", None)
 
-        # Event info stored so only need to update tokens
+        # Check if there is an old event
+        if self.con.execute("SELECT oldEventTokens FROM Player").fetchone()[0]:
+            self.logger.info("Old event information is stored, and only the token count should be updated")
+
+            # Number of tokens
+            old_token_id = self.con.execute("SELECT oldEventLootID FROM Player").fetchone()[0]
+            old_current_tokens = self.call_api(f"/lol-loot/v1/player-loot/{old_token_id}")["count"]
+            self.add_to_database("Player", "username", self.summonerName, "oldEventTokens", old_current_tokens)
+
+        # Check if there is a current event (tokens can be earned)
         if self.con.execute("SELECT eventLootID FROM Player").fetchone()[0]:
             self.logger.info("Event information is stored, and only the token count should be updated")
 
@@ -623,13 +662,17 @@ class Client:
 
         # Can I get rid of this call?
         store = self.call_api("/lol-store/v1/featured")
+        old_event_name = self.con.execute("SELECT oldEventName FROM Player").fetchone()[0]
+        # If there is an old event name, then just use this garbage string
+        if not old_event_name:
+            old_event_name = "lfkaofjhqaghpiqoghgad"
 
         # Event Name using pass
         for item in store["catalog"]:
             if item['inventoryType'] == "BUNDLES":
                 for loot in item['bundleItems']:
                     # If other bundles has tokens, change this line to something more unique
-                    if loot["name"].find("Token") != -1:
+                    if loot["name"].find("Token") != -1 and loot["name"].lower().find(old_event_name.lower()) == -1:
                         self.logger.info("Found event information")
 
                         # Event name
@@ -644,19 +687,41 @@ class Client:
                         current_tokens = self.call_api(f"/lol-loot/v1/player-loot/{token_id}")["count"]
                         self.add_to_database("Player", "username", self.summonerName, "eventTokens", current_tokens)
 
-                        # Token end date
-                        event_mission = self.get_event_missions()[0]
-                        event_mission: dict
-                        end_time = None
-                        if event_mission:
-                            end_time = event_mission["endTime"]
+                        # Token end date from missions, if not use alternative method that takes longer
+                        try:
+                            event_mission = self.get_event_missions()[0]
+                            event_mission: dict
+                            end_time = None
+                            if event_mission:
+                                end_time = event_mission["endTime"]
+                        except IndexError:
+                            # Could break, but works without open missions
+                            # If in a different region, this is where too look for event errors
+
+                            # Strip extra information
+                            description = loot["description"].split("earnable until ")
+                            date_as_string = description[1].split(". Tokens")[0]
+                            date_as_string = date_as_string.replace(",", "")
+                            date_as_string = date_as_string.replace(".", "")
+
+                            # Get each part of the date
+                            month, day, year, dummy, time_of_day, am_pm, timezone = date_as_string.split()
+                            offset = self.time_zones[timezone]
+                            date = "-".join([month, day, year, time_of_day, am_pm, offset])
+
+                            end_time = datetime.strptime(date, "%B-%d-%Y-%H:%M-%p-%z").timestamp() * 1000
+
                         self.add_to_database("Player", "username", self.summonerName, "tokenEndDate", end_time)
 
                         # Shop End Date
-                        shop_end = datetime.strptime(item["inactiveDate"], "%Y-%m-%dT%H:%M:%S.%f%z")
-                        # Bundles end 2 hours before shop, add 2 hours. * 1000 for milliseconds
-                        shop_end = (shop_end + timedelta(hours=2)).timestamp() * 1000
-                        self.add_to_database("Player", "username", self.summonerName, "shopEndDate", shop_end)
+                        try:
+                            shop_end = datetime.strptime(item["inactiveDate"], "%Y-%m-%dT%H:%M:%S.%f%z")
+                            # Bundles end 2 hours before shop, add 2 hours. * 1000 for milliseconds
+                            shop_end = (shop_end + timedelta(hours=2)).timestamp() * 1000
+                            self.add_to_database("Player", "username", self.summonerName, "shopEndDate", shop_end)
+                            return
+                        except KeyError:
+                            pass
 
     # Get functions
 
