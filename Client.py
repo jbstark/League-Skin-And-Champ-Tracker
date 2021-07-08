@@ -927,17 +927,23 @@ class Client:
             if image_path == '':
                 skin_id = item["outputs"][0]["lootName"]
                 skin_id = ''.join(i for i in skin_id if i.isdigit())
-                skin_info = self.call_api(f'/lol-store/v1/skins/{skin_id}')
-                champ_id = skin_info["itemRequirements"][0]["itemId"]
+                champ_id = skin_id[0:2]
                 # Make the image_path
                 image_path = f"/lol-game-data/assets/v1/champion-tiles/{champ_id}/{skin_id}.jpg"
 
             # See if loot is owned
             owned = False
-            output = item['outputs'][0]['lootName']
-            loot = self.call_api(f"/lol-loot/v1/player-loot/{output}")
-            if loot["redeemableStatus"] == "ALREADY_OWNED":
-                owned = True
+
+            # Looking for upcoming shop items not purchasable now
+            try:
+                output = item['outputs'][0]['lootName']
+                loot = self.call_api(f"/lol-loot/v1/player-loot/{output}")
+                if loot["redeemableStatus"] == "ALREADY_OWNED":
+                    owned = True
+
+            except IndexError:
+                output = item['description']
+                owned = False
 
             shop.append((item["contextMenuText"], image_path, item["slots"][0]["quantity"], owned))
 
