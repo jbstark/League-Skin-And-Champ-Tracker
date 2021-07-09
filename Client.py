@@ -678,7 +678,7 @@ class Client:
                         self.logger.info("Found event information")
 
                         # Event name
-                        event_name = item["name"].split()[1]
+                        event_name = loot["name"].split()[0]
                         self.add_to_database("Player", "username", self.summonerName, "eventName", event_name)
 
                         # Event loot ID
@@ -724,6 +724,7 @@ class Client:
 
                         except KeyError:
                             pass
+                        return
 
     # Get functions
 
@@ -899,7 +900,8 @@ class Client:
         event_missions = []
 
         for mission in all_missions:
-            if mission["seriesName"].find(event_name) != -1:
+            # Remove last character in case of plural difference
+            if mission["seriesName"].find(event_name[:-1]) != -1:
                 event_missions.append(mission)
         return event_missions
 
@@ -1007,6 +1009,10 @@ class Client:
 
         total_tokens = self.get_current_tokens(False)
 
+        if total_tokens > target:
+            self.logger.info(f"Goal of {target} is already met")
+            return "Goal Met"
+
         event_name = self.con.execute("SELECT eventName FROM Player").fetchone()[0]
 
         if event_name is None:
@@ -1029,7 +1035,8 @@ class Client:
             if mission["completedDate"] != -1:
                 if mission["title"] != "Pass Token Bank Missions":
                     for reward in mission["rewards"]:
-                        if reward["description"].find("Tokens") != -1 and reward["rewardFulfilled"] is True:
+                        if (reward["description"].find("Tokens") != -1 or reward["itemId"].find("Tokens") != -1) \
+                                and reward["rewardFulfilled"] is True:
                             earned_from_missions += reward["quantity"]
 
         tokens_from_missions_left -= earned_from_missions
