@@ -640,7 +640,7 @@ class Client:
             self.add_to_database("Player", "username", self.summonerName, "eventLootID", None)
             self.add_to_database("Player", "username", self.summonerName, "tokenEndDate", None)
             self.add_to_database("Player", "username", self.summonerName, "shopEndDate", None)
-            self.add_to_database("Player", "username", self.summonerName, "passOwned", None)
+            self.add_to_database("Player", "username", self.summonerName, "passOwned", False)
 
         # Check if there is an old event
         if self.con.execute("SELECT oldEventTokens FROM Player").fetchone()[0]:
@@ -994,11 +994,14 @@ class Client:
                 if item['inventoryType'] == "BUNDLES":
                     for loot in item['bundleItems']:
                         if loot["name"].find("Pass") != -1:
-                            if loot["owned"]:
-                                self.logger.debug(f"Found out that the pass is owned")
-                                pass_owned = True
-                                self.add_to_database("Player", "username", self.summonerName, "passOwned", True)
-                                break
+                            try:
+                                if loot["owned"]:
+                                    self.logger.debug(f"Found out that the pass is owned")
+                                    pass_owned = True
+                                    self.add_to_database("Player", "username", self.summonerName, "passOwned", True)
+                                    break
+                            except KeyError:
+                                return "Pass not owned"
             if not pass_owned:
                 return "Pass not owned"
 
