@@ -1060,6 +1060,17 @@ class Client:
 
         return tokens
 
+    def get_event_for_tabs(self):
+        """
+        Gets event names for tabs used in gui
+        :return: The two names of the current and old event (if either/ both are running) or None if not running
+        """
+        old_event_id = self.con.execute("SELECT oldEventName FROM Player").fetchone()[0]
+
+        current_event_id = self.con.execute("SELECT eventName FROM Player").fetchone()[0]
+
+        return old_event_id, current_event_id
+
     # Setter functions
 
     def set_local_settings(self, setting, value, add_not_update):
