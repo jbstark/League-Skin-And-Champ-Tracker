@@ -395,6 +395,18 @@ class Client:
         self.con.execute(f'UPDATE {table} SET {column} = {data} WHERE {row} = {comparison}')
         self.con.commit()
 
+    def reset_current_event(self):
+        """
+        Used to reset an event for testing purposes, or if an error occurs
+        :return:
+        """
+        self.add_to_database("Player", "username", self.summonerName, "eventName", None)
+        self.add_to_database("Player", "username", self.summonerName, "eventTokens", None)
+        self.add_to_database("Player", "username", self.summonerName, "eventLootID", None)
+        self.add_to_database("Player", "username", self.summonerName, "tokenEndDate", None)
+        self.add_to_database("Player", "username", self.summonerName, "shopEndDate", None)
+        self.add_to_database("Player", "username", self.summonerName, "passOwned", False)
+
     # Update Functions
 
     def update(self):
