@@ -6,6 +6,8 @@ from flowlayout import FlowLayout
 from PyQt5 import QtWidgets, QtCore, QtGui
 from datetime import datetime
 from PyQt5 import QtTest
+from enum import IntEnum, unique
+import logging
 
 
 def create_client_refresh_messageBox(firstOpen, parent=None):
@@ -48,7 +50,7 @@ class SidebarInfoWidget(QtWidgets.QStackedWidget):
         self.ui = Ui_sidebar_tab_info_stacked_widget()
         self.ui.setupUi(self)
         
-        self.setObjectName("current_event_details_widget")
+        self.setObjectName("tab_details_widget")
         self.ui.target_tokens_lineEdit.setValidator(
             QtGui.QIntValidator(0, (2 ** 31) - 1, self.ui.target_tokens_lineEdit.parent()))
         
@@ -61,6 +63,13 @@ class SidebarInfoWidget(QtWidgets.QStackedWidget):
                 f"Tokens needed per day: {client.get_tokens_per_day(int(new_text))}")
         except ValueError:
             self.ui.tokens_per_day_label.setText("Tokens needed per day: ")
+    
+    @unique
+    class TabIndex(IntEnum):
+        CHAMPIONS = 0
+        SKINS = 1
+        CURRENT_EVENT = 2
+        PREVIOUS_EVENT = 3
 
 
 class IconWidget(QtWidgets.QFrame):
@@ -153,29 +162,70 @@ class TrackerWindow(QtWidgets.QMainWindow):
     
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
-    
-        self.setup_refresh_label_timer()
-        self.setup_refresh_button()
-        self.setup_champs_tab_layout()
-        self.setup_current_event_tab_layout()
-    
-        self.last_refresh_time = None
-        self.sidebar_info_widget = None
-    
+        
         self.client = Client()
         while not self.client.clientRunning:
             create_client_refresh_messageBox(True, self.ui.centralwidget).exec_()
             self.client.check_client_running()
         self.refresh()
     
+        self.setup_refresh_label_timer()
+        self.setup_refresh_button()
+        #self.setup_champs_tab_layout()
+        self.setup_current_event_tab_layout()
+
+        self.config_event_tabs()
+    
+        self.last_refresh_time = None
+        self.sidebar_info_widget = None
+    
         self.ui.tab_widget.currentChanged.connect(self.new_tab_selected)
         self.create_sidebar_info_widget()
         self.new_tab_selected()
         self.populate_current_event_tab()
-    
+
+    def config_event_tabs(self):
+        if len(self.client.get_event_for_tabs()) > 1:
+            self.ui.previous_event_tab = QtWidgets.QWidget()
+            self.ui.previous_event_tab.setObjectName("previous_event_tab")
+        
+            self.ui.previous_event_tab_flowLayout = QtWidgets.QGridLayout(self.ui.previous_event_tab)
+            self.ui.previous_event_tab_flowLayout.setObjectName("previous_event_tab")
+        
+            self.ui.previous_event_tab_scroll_area = QtWidgets.QScrollArea(self.ui.previous_event_tab)
+            self.ui.previous_event_tab_scroll_area.setObjectName("previous_event_tab_scroll_area")
+            self.ui.previous_event_tab_scroll_area.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
+            self.ui.previous_event_tab_scroll_area.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+            self.ui.previous_event_tab_scroll_area.setWidgetResizable(True)
+        
+            self.ui.previous_event_tab_scroll_area_widget_contents = QtWidgets.QWidget()
+            self.ui.previous_event_tab_scroll_area_widget_contents.setObjectName(
+                "previous_event_tab_scroll_area_widget_contents")
+            self.ui.previous_event_tab_scroll_area.setWidget(self.ui.previous_event_tab_scroll_area_widget_contents)
+            self.ui.previous_event_tab_flowLayout.addWidget(self.ui.previous_event_tab_scroll_area)
+        
+            self.ui.tab_widget.addTab(self.ui.previous_event_tab, f"{self.client.get_event_for_tabs()[0]} Event")
+            self.ui.tab_widget.setTabText(2, f"{self.client.get_event_for_tabs()[1]} Event")
+        else:
+            self.ui.tab_widget.setTabText(2, f"{self.client.get_event_for_tabs()[0]} Event")
+
     def new_tab_selected(self):
-        if self.ui.tab_widget.tabText(self.ui.tab_widget.currentIndex()) == "Current Event":
-            self.sidebar_info_widget.setCurrentIndex(2)
+        if self.ui.tab_widget.tabText(self.ui.tab_widget.currentIndex()) == "Champions":
+            self.sidebar_info_widget.setCurrentIndex(SidebarInfoWidget.TabIndex.CHAMPIONS)
+        elif self.ui.tab_widget.tabText(self.ui.tab_widget.currentIndex()) == "Skins":
+            self.sidebar_info_widget.setCurrentIndex(SidebarInfoWidget.TabIndex.SKINS)
+        elif self.ui.tab_widget.tabText(self.ui.tab_widget.currentIndex()) == self.client.get_event_for_tabs()[0]:
+            self.sidebar_info_widget.setCurrentIndex(SidebarInfoWidget.TabIndex.CURRENT_EVENT)
+        else:
+            if len(self.client.get_event_for_tabs()) > 1:
+                if self.ui.tab_widget.tabText(self.ui.tab_widget.currentIndex()).find(
+                        self.client.get_event_for_tabs()[1]) >= 0:
+                    self.sidebar_info_widget.setCurrentIndex(SidebarInfoWidget.TabIndex.CURRENT_EVENT)
+                if self.ui.tab_widget.tabText(self.ui.tab_widget.currentIndex()).find(
+                        self.client.get_event_for_tabs()[0]) >= 0:
+                    self.sidebar_info_widget.setCurrentIndex(SidebarInfoWidget.TabIndex.PREVIOUS_EVENT)
+            elif self.ui.tab_widget.tabText(self.ui.tab_widget.currentIndex()).find(self.client.get_event_for_tabs()[0]):
+                self.sidebar_info_widget.setCurrentIndex(SidebarInfoWidget.TabIndex.CURRENT_EVENT)
             
     def create_sidebar_info_widget(self):
         self.sidebar_info_widget = SidebarInfoWidget(self.client, parent=self.ui.left_panel_frame)
