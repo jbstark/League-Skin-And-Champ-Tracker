@@ -160,7 +160,10 @@ class FlowLayout(QGridLayout):
             total_widget_width = num_columns * self.itemList[0].widget().width()
             total_spacing = width - total_widget_width
             spacing = int(total_spacing / (num_columns - 1))
-            self.setHorizontalSpacing(spacing)
+            if spacing > 5:
+                self.setHorizontalSpacing(spacing)
+            else:
+                self.setHorizontalSpacing(5)
 
 
 if __name__ == '__main__':
