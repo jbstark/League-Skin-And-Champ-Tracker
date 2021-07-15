@@ -1,6 +1,7 @@
 import SidebarInformationWidget
 from QtGUI import Ui_MainWindow
 from SidebarInformationWidget import Ui_sidebar_tab_info_stacked_widget
+from SettingsWidget import Ui_settings_widget
 from Client import Client
 from flowlayout import FlowLayout
 from PyQt5 import QtWidgets, QtCore, QtGui
@@ -50,19 +51,24 @@ class SidebarInfoWidget(QtWidgets.QStackedWidget):
         self.ui = Ui_sidebar_tab_info_stacked_widget()
         self.ui.setupUi(self)
         
-        self.setObjectName("tab_details_widget")
-        self.ui.target_tokens_lineEdit.setValidator(
-            QtGui.QIntValidator(0, (2 ** 31) - 1, self.ui.target_tokens_lineEdit.parent()))
+        self.client = client
         
-        self.ui.target_tokens_lineEdit.textEdited.connect(lambda: self.text_edited(client))
+        self.setObjectName("tab_details_widget")
+        self.ui.current_event_target_tokens_lineEdit.setValidator(
+            QtGui.QIntValidator(0, (2 ** 31) - 1, self.ui.current_event_target_tokens_lineEdit.parent()))
+        
+        self.ui.current_event_current_tokens_label.setText(f"Current tokens: {client.get_current_tokens(False)}")
+        self.ui.previous_event_current_tokens_label.setText(f"Current tokens: {client.get_current_tokens(True)}")
+        
+        self.ui.current_event_target_tokens_lineEdit.textEdited.connect(self.current_event_target_tokens_text_edited)
     
-    def text_edited(self, client):
-        new_text = self.ui.target_tokens_lineEdit.text()
+    def current_event_target_tokens_text_edited(self):
+        new_text = self.ui.current_event_target_tokens_lineEdit.text()
         try:
-            self.ui.tokens_per_day_label.setText(
-                f"Tokens needed per day: {client.get_tokens_per_day(int(new_text))}")
+            self.ui.current_event_tokens_per_day_label.setText(
+                f"Tokens needed per day: {self.client.get_tokens_per_day(int(new_text))}")
         except ValueError:
-            self.ui.tokens_per_day_label.setText("Tokens needed per day: ")
+            self.ui.current_event_tokens_per_day_label.setText("Tokens needed per day: ")
     
     @unique
     class TabIndex(IntEnum):
@@ -70,7 +76,7 @@ class SidebarInfoWidget(QtWidgets.QStackedWidget):
         SKINS = 1
         CURRENT_EVENT = 2
         PREVIOUS_EVENT = 3
-
+        
 
 class IconWidget(QtWidgets.QFrame):
     def __init__(self, name="", api_call_path="", cost=0, client=None, width=200, height=250, parent=None, *args, **kwargs):
@@ -149,6 +155,87 @@ class IconWidget(QtWidgets.QFrame):
         QtCore.QMetaObject.connectSlotsByName(self)
 
 
+class SettingsWidget(QtWidgets.QWidget):
+    def __init__(self, client, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        self.ui = Ui_settings_widget()
+        self.ui.setupUi(self)
+        
+        self.client = client
+
+        self.last_refresh_time = None
+        
+        self.setup_refresh_button()
+        self.setup_refresh_label_timer()
+        self.refresh()
+
+    def setup_refresh_button(self):
+        """Configures the refresh button."""
+        self.ui.settings_widget_refresh_button.clicked.connect(self.refresh)
+
+    def setup_refresh_label_timer(self):
+        """Configures and starts the refresh label timer."""
+        self.ui.settings_widget_refresh_label_timer = QtCore.QTimer(self.ui.settings_widget_last_refresh_label)
+        self.ui.settings_widget_refresh_label_timer.setObjectName("refresh_label_timer")
+        self.ui.settings_widget_refresh_label_timer.setInterval(30000)  # 60 seconds
+        self.ui.settings_widget_refresh_label_timer.setSingleShot(False)  # repeat timer on timeout
+        self.ui.settings_widget_refresh_label_timer.timeout.connect(self.reset_refresh_label)  # call reset_refresh_label on timeout
+        self.ui.settings_widget_refresh_label_timer.start()
+
+    def refresh(self):
+        """Updates client data and resets its text."""
+        try:
+            self.client.update()
+        except TypeError:
+            # The client has been closed
+            closing = True
+            self.client.clientRunning = False
+            self.client.lockfileFound = False
+        
+            # While the client is still closing, look for the lockfile
+            while closing:
+                # Wait one second before trying to open the file again
+                QtTest.QTest.qWait(1000)
+                try:
+                    with open(self.client.currentDirectory, 'r'):
+                        pass
+                # Lockfile is gone, client is fully closed
+                except FileNotFoundError:
+                    closing = False
+                    print("Client fully closed")
+        
+            # While the client is not running, ask if they user wants to refresh
+            while not self.client.clientRunning:
+                create_client_refresh_messageBox(False, self.ui.centralwidget).exec_()
+                self.client.check_client_running()
+            # Client is now running and can be refreshed
+            self.refresh()
+    
+        self.ui.settings_widget_num_champs_owned_label.setText(
+            f"Number of Champions Owned: {self.client.get_num_champs(True)}")
+        self.ui.settings_widget_max_blue_essence_needed_label.setText(
+            f"Maximum Blue Essence Needed: {self.client.get_ip_needed('max', True, True)}")
+    
+        self.last_refresh_time = datetime.now()
+        self.reset_refresh_label()
+
+    def reset_refresh_label(self):
+        """Updates the refresh label with correct elapsed time."""
+        elapsed_time = datetime.now() - self.last_refresh_time
+        elapsed_seconds = elapsed_time.total_seconds()
+        elapsed_minutes = int(elapsed_seconds / 60)
+    
+        if elapsed_minutes < 1:
+            self.ui.settings_widget_last_refresh_label.setText("Last Refresh: < 1 minute ago")
+        elif elapsed_minutes == 1:
+            self.ui.settings_widget_last_refresh_label.setText("Last Refresh: 1 minute ago")
+        elif elapsed_minutes > 60:
+            self.ui.settings_widget_last_refresh_label.setText("Last Refresh: > 1 hour ago")
+        else:
+            self.ui.settings_widget_last_refresh_label.setText(f"Last Refresh: {elapsed_minutes} minutes ago")
+
+
 class TrackerWindow(QtWidgets.QMainWindow):
     
     def __init__(self, *args, **kwargs):
@@ -167,25 +254,24 @@ class TrackerWindow(QtWidgets.QMainWindow):
         while not self.client.clientRunning:
             create_client_refresh_messageBox(True, self.ui.centralwidget).exec_()
             self.client.check_client_running()
-        self.refresh()
     
-        self.setup_refresh_label_timer()
-        self.setup_refresh_button()
         #self.setup_champs_tab_layout()
         self.setup_current_event_tab_layout()
 
         self.config_event_tabs()
     
-        self.last_refresh_time = None
         self.sidebar_info_widget = None
     
         self.ui.tab_widget.currentChanged.connect(self.new_tab_selected)
+        self.ui.left_panel_frame_vertical_layout.addWidget(SettingsWidget(client=self.client,
+                                                                          parent=self.ui.left_panel_frame))
         self.create_sidebar_info_widget()
         self.new_tab_selected()
         self.populate_current_event_tab()
+        self.populate_previous_event_tab()
 
     def config_event_tabs(self):
-        if len(self.client.get_event_for_tabs()) > 1:
+        if None not in self.client.get_event_for_tabs():
             self.ui.previous_event_tab = QtWidgets.QWidget()
             self.ui.previous_event_tab.setObjectName("previous_event_tab")
         
@@ -207,25 +293,19 @@ class TrackerWindow(QtWidgets.QMainWindow):
             self.ui.tab_widget.addTab(self.ui.previous_event_tab, f"{self.client.get_event_for_tabs()[0]} Event")
             self.ui.tab_widget.setTabText(2, f"{self.client.get_event_for_tabs()[1]} Event")
         else:
-            self.ui.tab_widget.setTabText(2, f"{self.client.get_event_for_tabs()[0]} Event")
+            self.ui.tab_widget.setTabText(2, f"{self.client.get_event_for_tabs()[1]} Event")
 
     def new_tab_selected(self):
         if self.ui.tab_widget.tabText(self.ui.tab_widget.currentIndex()) == "Champions":
             self.sidebar_info_widget.setCurrentIndex(SidebarInfoWidget.TabIndex.CHAMPIONS)
         elif self.ui.tab_widget.tabText(self.ui.tab_widget.currentIndex()) == "Skins":
             self.sidebar_info_widget.setCurrentIndex(SidebarInfoWidget.TabIndex.SKINS)
-        elif self.ui.tab_widget.tabText(self.ui.tab_widget.currentIndex()) == self.client.get_event_for_tabs()[0]:
+        elif self.ui.tab_widget.tabText(self.ui.tab_widget.currentIndex()) == \
+                f"{self.client.get_event_for_tabs()[1]} Event":
             self.sidebar_info_widget.setCurrentIndex(SidebarInfoWidget.TabIndex.CURRENT_EVENT)
-        else:
-            if len(self.client.get_event_for_tabs()) > 1:
-                if self.ui.tab_widget.tabText(self.ui.tab_widget.currentIndex()).find(
-                        self.client.get_event_for_tabs()[1]) >= 0:
-                    self.sidebar_info_widget.setCurrentIndex(SidebarInfoWidget.TabIndex.CURRENT_EVENT)
-                if self.ui.tab_widget.tabText(self.ui.tab_widget.currentIndex()).find(
-                        self.client.get_event_for_tabs()[0]) >= 0:
-                    self.sidebar_info_widget.setCurrentIndex(SidebarInfoWidget.TabIndex.PREVIOUS_EVENT)
-            elif self.ui.tab_widget.tabText(self.ui.tab_widget.currentIndex()).find(self.client.get_event_for_tabs()[0]):
-                self.sidebar_info_widget.setCurrentIndex(SidebarInfoWidget.TabIndex.CURRENT_EVENT)
+        elif self.ui.tab_widget.tabText(self.ui.tab_widget.currentIndex()) == \
+                f"{self.client.get_event_for_tabs()[0]} Event":
+            self.sidebar_info_widget.setCurrentIndex(SidebarInfoWidget.TabIndex.PREVIOUS_EVENT)
             
     def create_sidebar_info_widget(self):
         self.sidebar_info_widget = SidebarInfoWidget(self.client, parent=self.ui.left_panel_frame)
@@ -243,6 +323,19 @@ class TrackerWindow(QtWidgets.QMainWindow):
             self.ui.current_event_tab_scroll_area_widget_contents_layout.addWidget(
                 IconWidget(
                     item[0], item[1], cost, self.client, parent=self.ui.current_event_tab_scroll_area_widget_contents))
+            
+    def populate_previous_event_tab(self):
+        """Adds all purchasable item widgets to the current event tab."""
+        event_shop = self.client.get_event_shop(True)
+        for item in event_shop:
+            cost = item[2]
+            if item[3]:
+                cost = "Owned"
+            elif item[2] == 0:
+                cost = "Unknown"
+            self.ui.previous_event_tab_scroll_area_widget_contents_layout.addWidget(
+                IconWidget(
+                    item[0], item[1], cost, self.client, parent=self.ui.previous_event_tab_scroll_area_widget_contents))
     
     def setup_champs_tab_layout(self):
         """Creates flow layout for the champs tab."""
@@ -257,69 +350,13 @@ class TrackerWindow(QtWidgets.QMainWindow):
             self.ui.current_event_tab_scroll_area_widget_contents)
         self.ui.current_event_tab_scroll_area_widget_contents_layout.setObjectName(
             "current_event_tab_scroll_area_widget_contents_layout")
-    
-    def setup_refresh_button(self):
-        """Configures the refresh button."""
-        self.ui.refresh_button.clicked.connect(self.refresh)
-    
-    def setup_refresh_label_timer(self):
-        """Configures and starts the refresh label timer."""
-        self.ui.refresh_label_timer = QtCore.QTimer(self.ui.last_refresh_label)
-        self.ui.refresh_label_timer.setObjectName("refresh_label_timer")
-        self.ui.refresh_label_timer.setInterval(30000)  # 60 seconds
-        self.ui.refresh_label_timer.setSingleShot(False)  # repeat timer on timeout
-        self.ui.refresh_label_timer.timeout.connect(self.reset_refresh_label)  # call reset_refresh_label on timeout
-        self.ui.refresh_label_timer.start()
-    
-    def refresh(self):
-        """Updates client data and resets its text."""
-        try:
-            self.client.update()
-        except TypeError:
-            # The client has been closed
-            closing = True
-            self.client.clientRunning = False
-            self.client.lockfileFound = False
-            
-            # While the client is still closing, look for the lockfile
-            while closing:
-                # Wait one second before trying to open the file again
-                QtTest.QTest.qWait(1000)
-                try:
-                    with open(self.client.currentDirectory, 'r'):
-                        pass
-                # Lockfile is gone, client is fully closed
-                except FileNotFoundError:
-                    closing = False
-                    print("Client fully closed")
-            
-            # While the client is not running, ask if they user wants to refresh
-            while not self.client.clientRunning:
-                create_client_refresh_messageBox(False, self.ui.centralwidget).exec_()
-                self.client.check_client_running()
-            # Client is now running and can be refreshed
-            self.refresh()
         
-        self.ui.num_champs_owned_value_label.setText(self.client.get_num_champs(True))
-        self.ui.max_blue_essence_needed_value_label.setText(self.client.get_ip_needed("max", True, True))
-        
-        self.last_refresh_time = datetime.now()
-        self.reset_refresh_label()
-    
-    def reset_refresh_label(self):
-        """Updates the refresh label with correct elapsed time."""
-        elapsed_time = datetime.now() - self.last_refresh_time
-        elapsed_seconds = elapsed_time.total_seconds()
-        elapsed_minutes = int(elapsed_seconds / 60)
-        
-        if elapsed_minutes < 1:
-            self.ui.last_refresh_label.setText("Last Refresh: < 1 minute ago")
-        elif elapsed_minutes == 1:
-            self.ui.last_refresh_label.setText("Last Refresh: 1 minute ago")
-        elif elapsed_minutes > 60:
-            self.ui.last_refresh_label.setText("Last Refresh: > 1 hour ago")
-        else:
-            self.ui.last_refresh_label.setText(f"Last Refresh: {elapsed_minutes} minutes ago")
+    def setup_previous_event_tab_layout(self):
+        """Creates flow layout for the previous event tab."""
+        self.ui.current_event_tab_scroll_area_widget_contents_layout = FlowLayout(
+            self.ui.previous_event_tab_scroll_area_widget_contents)
+        self.ui.current_event_tab_scroll_area_widget_contents_layout.setObjectName(
+            "previous_event_tab_scroll_area_widget_contents_layout")
 
 
 if __name__ == "__main__":
