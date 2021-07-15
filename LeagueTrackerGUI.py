@@ -45,6 +45,8 @@ def client_refresh_button_clicked(i):
 
 
 class SidebarInfoWidget(QtWidgets.QStackedWidget):
+    text_edited = QtCore.pyqtSignal(Client, int)
+    
     def __init__(self, client, parent=None, *args, **kwargs):
         super().__init__(parent=parent, *args, **kwargs)
         
@@ -60,7 +62,20 @@ class SidebarInfoWidget(QtWidgets.QStackedWidget):
         self.ui.current_event_current_tokens_label.setText(f"Current tokens: {client.get_current_tokens(False)}")
         self.ui.previous_event_current_tokens_label.setText(f"Current tokens: {client.get_current_tokens(True)}")
         
-        self.ui.current_event_target_tokens_lineEdit.textEdited.connect(self.current_event_target_tokens_text_edited)
+        self.worker = SidebarInfoWidget.TargetTokensWorker()
+        self.worker_thread = QtCore.QThread()
+        self.worker.moveToThread(self.worker_thread)
+        self.worker_thread.start()
+        
+        self.ui.current_event_target_tokens_lineEdit.textEdited.connect(self.update_text)
+        self.text_edited.connect(self.worker.calculate_tokens_per_day)
+        self.worker.result.connect(self.update_target_tokens_label)
+    
+    def update_text(self):
+        self.text_edited.emit(self.client, int(self.ui.current_event_target_tokens_lineEdit.text()))
+    
+    def update_target_tokens_label(self, new_value: str):
+        self.ui.current_event_tokens_per_day_label.setText(f"Tokens needed per day: {new_value}")
     
     def current_event_target_tokens_text_edited(self):
         new_text = self.ui.current_event_target_tokens_lineEdit.text()
@@ -76,6 +91,12 @@ class SidebarInfoWidget(QtWidgets.QStackedWidget):
         SKINS = 1
         CURRENT_EVENT = 2
         PREVIOUS_EVENT = 3
+    
+    class TargetTokensWorker(QtCore.QObject):
+        result = QtCore.pyqtSignal(str)
+        
+        def calculate_tokens_per_day(self, client: Client, target: int):
+            self.result.emit(str(client.get_tokens_per_day(target)))
         
 
 class IconWidget(QtWidgets.QFrame):
