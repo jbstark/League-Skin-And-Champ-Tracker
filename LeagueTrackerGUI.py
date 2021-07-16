@@ -79,12 +79,12 @@ class SidebarInfoWidget(QtWidgets.QStackedWidget):
         
 
 class IconWidget(QtWidgets.QFrame):
-    def __init__(self, name="", api_call_path="", cost=0, client=None, width=200, height=250, parent=None, *args, **kwargs):
+    def __init__(self, name="", api_call_path="", cost=0, client=None, width=200, height=250, parent=None, *args,
+                 **kwargs):
         super().__init__(parent=parent, *args, **kwargs)
     
         self.setObjectName(f"icon_frame_{name}")
         self.setCursor(QtGui.QCursor(QtCore.Qt.OpenHandCursor))  # Indicates that the widget is clickable
-        self.setFrameShape(QtWidgets.QFrame.Box)
         self.setMinimumSize(width, height)
         self.setMaximumSize(width, height)
     
@@ -153,6 +153,12 @@ class IconWidget(QtWidgets.QFrame):
         # self.name_label.setText(
         #    _translate("icon_frame", self.name_label.fontMetrics().elidedText(name, QtCore.Qt.ElideRight, 110)))
         QtCore.QMetaObject.connectSlotsByName(self)
+
+    def enterEvent(self, a0: QtCore.QEvent) -> None:
+        self.setFrameShape(QtWidgets.QFrame.Box)
+
+    def leaveEvent(self, a0: QtCore.QEvent) -> None:
+        self.setFrameShape(QtWidgets.QFrame.NoFrame)
 
 
 class SettingsWidget(QtWidgets.QWidget):
