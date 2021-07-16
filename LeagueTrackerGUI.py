@@ -72,7 +72,10 @@ class SidebarInfoWidget(QtWidgets.QStackedWidget):
         self.worker.result.connect(self.update_target_tokens_label)
     
     def update_text(self):
-        self.text_edited.emit(self.client, int(self.ui.current_event_target_tokens_lineEdit.text()))
+        try:
+            self.text_edited.emit(self.client, int(self.ui.current_event_target_tokens_lineEdit.text()))
+        except ValueError:
+            self.ui.current_event_tokens_per_day_label.setText("Tokens needed per day: ")
     
     def update_target_tokens_label(self, new_value: str):
         self.ui.current_event_tokens_per_day_label.setText(f"Tokens needed per day: {new_value}")

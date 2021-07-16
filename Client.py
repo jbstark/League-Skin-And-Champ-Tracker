@@ -238,7 +238,7 @@ class Client:
         # Create file for each user
         filename = "lol_" + self.summonerName + ".db"
         path = os.path.join(self.data_folder_name, f'{filename}')
-        self.con = sqlite3.connect(path)
+        self.con = sqlite3.connect(path, check_same_thread=False)
 
         # All columns (besides name) in the DB. Add a tuple here to add a column
         columns_champions = [("championID", "INTEGER"), ("owned", "INTEGER"), ("cost", "INTEGER"),
