@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>current_event_details_widget</class>
+ <widget class="QWidget" name="current_event_details_widget">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>315</width>
+    <height>120</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Form</string>
+  </property>
+  <layout class="QVBoxLayout" name="current_event_widget_vertical_layout">
+   <item>
+    <widget class="QFrame" name="token_target_frame">
+     <property name="frameShape">
+      <enum>QFrame::StyledPanel</enum>
+     </property>
+     <property name="frameShadow">
+      <enum>QFrame::Raised</enum>
+     </property>
+     <layout class="QHBoxLayout" name="token_target_frame_horizontal_layout">
+      <property name="leftMargin">
+       <number>0</number>
+      </property>
+      <item>
+       <widget class="QLabel" name="token_target_frame_label">
+        <property name="text">
+         <string>Enter target tokens:</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLineEdit" name="token_target_frame_input_lineedit"/>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLabel" name="current_event_current_tokens_label">
+     <property name="text">
+      <string>Current tokens: </string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLabel" name="current_event_target_tokens_per_day_label">
+     <property name="text">
+      <string>Tokens needed per day: </string>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
