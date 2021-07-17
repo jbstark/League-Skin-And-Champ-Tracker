@@ -1,5 +1,7 @@
 import SidebarInformationWidget
 from QtGUI import Ui_MainWindow
+from ShoppingCart import Ui_shopping_cart_widget
+from CartItem import Ui_CartItem
 from SidebarInformationWidget import Ui_sidebar_tab_info_stacked_widget
 from SettingsWidget import Ui_settings_widget
 from Client import Client
@@ -159,7 +161,7 @@ class IconWidget(QtWidgets.QFrame):
 
     def leaveEvent(self, a0: QtCore.QEvent) -> None:
         self.setFrameShape(QtWidgets.QFrame.NoFrame)
-
+        
 
 class SettingsWidget(QtWidgets.QWidget):
     def __init__(self, client, *args, **kwargs):
@@ -240,8 +242,52 @@ class SettingsWidget(QtWidgets.QWidget):
             self.ui.settings_widget_last_refresh_label.setText("Last Refresh: > 1 hour ago")
         else:
             self.ui.settings_widget_last_refresh_label.setText(f"Last Refresh: {elapsed_minutes} minutes ago")
+    
 
-
+class ShoppingCart(QtWidgets.QWidget):
+    class CartItem(QtWidgets.QWidget):
+        def __init__(self, item_name, cost, parent=None):
+            super().__init__(parent=parent)
+            
+            self.ui = Ui_CartItem()
+            self.ui.setupUi(self)
+            
+            self.name = item_name
+            self.cost = cost
+            self.quantity = 1
+            
+            self.ui.item_quantity_spinBox.valueChanged.connect(self.update_quantity)
+            
+        def update_quantity(self):
+            self.quantity = self.ui.item_quantity_spinBox.value()
+        
+        def remove_item(self):
+            if self.parent() is not None:
+                self.parent().layout().removeWidget(self)
+                self.deleteLater()
+        
+        def total_cost(self):
+            return self.cost * self.quantity
+        
+    def __init__(self, parent=None):
+        super().__init__()
+        
+        self.ui = Ui_shopping_cart_widget()
+        self.ui.setupUi(self)
+        
+        self.items = []
+        self.cart_total = 0
+        
+        self.ui.shopping_cart_scrollAreaWidgetContents_verticalLayout.setAlignment(QtCore.Qt.AlignTop)
+        
+    def add_item(self, item_name, item_cost):
+        new_item = ShoppingCart.CartItem(item_name, item_cost, parent=self.ui.shopping_cart_scrollAreaWidgetContents)
+        self.ui.shopping_cart_scrollAreaWidgetContents_verticalLayout.addWidget(new_item)
+        self.items.append(new_item)
+        
+        self.cart_total += new_item.total_cost()
+        
+        
 class TrackerWindow(QtWidgets.QMainWindow):
     
     def __init__(self, *args, **kwargs):
@@ -271,7 +317,10 @@ class TrackerWindow(QtWidgets.QMainWindow):
         self.ui.tab_widget.currentChanged.connect(self.new_tab_selected)
         self.ui.left_panel_frame_vertical_layout.addWidget(SettingsWidget(client=self.client,
                                                                           parent=self.ui.left_panel_frame))
+        
         self.create_sidebar_info_widget()
+        self.shopping_cart = ShoppingCart(parent=self.ui.left_panel_frame)
+        self.ui.left_panel_frame_vertical_layout.addWidget(self.shopping_cart)
         self.new_tab_selected()
         self.populate_current_event_tab()
         self.populate_previous_event_tab()
