@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'ui\ShoppingCart.ui'
+# Form implementation generated from reading ui file 'ui/ShoppingCart.ui'
 #
 # Created by: PyQt5 UI code generator 5.15.4
 #
@@ -14,20 +14,34 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_shopping_cart_widget(object):
     def setupUi(self, shopping_cart_widget):
         shopping_cart_widget.setObjectName("shopping_cart_widget")
-        shopping_cart_widget.resize(400, 300)
+        shopping_cart_widget.resize(350, 400)
+        shopping_cart_widget.setMinimumSize(QtCore.QSize(350, 400))
         self.shopping_cart_widget_layout = QtWidgets.QGridLayout(shopping_cart_widget)
         self.shopping_cart_widget_layout.setObjectName("shopping_cart_widget_layout")
         self.shopping_cart_widget_scrollArea = QtWidgets.QScrollArea(shopping_cart_widget)
+        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(self.shopping_cart_widget_scrollArea.sizePolicy().hasHeightForWidth())
+        self.shopping_cart_widget_scrollArea.setSizePolicy(sizePolicy)
         self.shopping_cart_widget_scrollArea.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
         self.shopping_cart_widget_scrollArea.setWidgetResizable(True)
         self.shopping_cart_widget_scrollArea.setObjectName("shopping_cart_widget_scrollArea")
         self.shopping_cart_scrollAreaWidgetContents = QtWidgets.QWidget()
-        self.shopping_cart_scrollAreaWidgetContents.setGeometry(QtCore.QRect(0, 0, 380, 280))
+        self.shopping_cart_scrollAreaWidgetContents.setGeometry(QtCore.QRect(0, 0, 330, 361))
+        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Preferred)
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(self.shopping_cart_scrollAreaWidgetContents.sizePolicy().hasHeightForWidth())
+        self.shopping_cart_scrollAreaWidgetContents.setSizePolicy(sizePolicy)
         self.shopping_cart_scrollAreaWidgetContents.setObjectName("shopping_cart_scrollAreaWidgetContents")
         self.shopping_cart_scrollAreaWidgetContents_verticalLayout = QtWidgets.QVBoxLayout(self.shopping_cart_scrollAreaWidgetContents)
         self.shopping_cart_scrollAreaWidgetContents_verticalLayout.setObjectName("shopping_cart_scrollAreaWidgetContents_verticalLayout")
         self.shopping_cart_widget_scrollArea.setWidget(self.shopping_cart_scrollAreaWidgetContents)
-        self.shopping_cart_widget_layout.addWidget(self.shopping_cart_widget_scrollArea, 0, 0, 1, 1)
+        self.shopping_cart_widget_layout.addWidget(self.shopping_cart_widget_scrollArea, 1, 0, 1, 1)
+        self.cart_total_label = QtWidgets.QLabel(shopping_cart_widget)
+        self.cart_total_label.setObjectName("cart_total_label")
+        self.shopping_cart_widget_layout.addWidget(self.cart_total_label, 0, 0, 1, 1)
 
         self.retranslateUi(shopping_cart_widget)
         QtCore.QMetaObject.connectSlotsByName(shopping_cart_widget)
@@ -35,6 +49,7 @@ class Ui_shopping_cart_widget(object):
     def retranslateUi(self, shopping_cart_widget):
         _translate = QtCore.QCoreApplication.translate
         shopping_cart_widget.setWindowTitle(_translate("shopping_cart_widget", "Form"))
+        self.cart_total_label.setText(_translate("shopping_cart_widget", "Total cost: 0"))
 
 
 if __name__ == "__main__":

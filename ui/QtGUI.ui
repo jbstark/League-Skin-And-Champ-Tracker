@@ -38,6 +38,12 @@
        </property>
        <item alignment="Qt::AlignHCenter|Qt::AlignTop">
         <widget class="QFrame" name="left_panel_frame">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
          <property name="minimumSize">
           <size>
            <width>0</width>
@@ -45,10 +51,13 @@
           </size>
          </property>
          <property name="frameShape">
-          <enum>QFrame::StyledPanel</enum>
+          <enum>QFrame::Box</enum>
          </property>
          <property name="frameShadow">
-          <enum>QFrame::Raised</enum>
+          <enum>QFrame::Plain</enum>
+         </property>
+         <property name="lineWidth">
+          <number>3</number>
          </property>
          <layout class="QVBoxLayout" name="left_panel_frame_vertical_layout">
           <property name="leftMargin">
@@ -107,7 +116,7 @@
                <rect>
                 <x>0</x>
                 <y>0</y>
-                <width>933</width>
+                <width>929</width>
                 <height>571</height>
                </rect>
               </property>

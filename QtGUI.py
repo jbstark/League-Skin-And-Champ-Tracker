@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'QtGUI.ui'
+# Form implementation generated from reading ui file 'ui/QtGUI.ui'
 #
 # Created by: PyQt5 UI code generator 5.15.4
 #
@@ -33,9 +33,15 @@ class Ui_MainWindow(object):
         self.horizontalLayout.setContentsMargins(-1, -1, -1, 0)
         self.horizontalLayout.setObjectName("horizontalLayout")
         self.left_panel_frame = QtWidgets.QFrame(self.main_frame)
+        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Preferred)
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(self.left_panel_frame.sizePolicy().hasHeightForWidth())
+        self.left_panel_frame.setSizePolicy(sizePolicy)
         self.left_panel_frame.setMinimumSize(QtCore.QSize(0, 0))
-        self.left_panel_frame.setFrameShape(QtWidgets.QFrame.StyledPanel)
-        self.left_panel_frame.setFrameShadow(QtWidgets.QFrame.Raised)
+        self.left_panel_frame.setFrameShape(QtWidgets.QFrame.Box)
+        self.left_panel_frame.setFrameShadow(QtWidgets.QFrame.Plain)
+        self.left_panel_frame.setLineWidth(3)
         self.left_panel_frame.setObjectName("left_panel_frame")
         self.left_panel_frame_vertical_layout = QtWidgets.QVBoxLayout(self.left_panel_frame)
         self.left_panel_frame_vertical_layout.setContentsMargins(0, -1, -1, 0)
@@ -63,7 +69,7 @@ class Ui_MainWindow(object):
         self.champs_tab_scroll_area.setWidgetResizable(True)
         self.champs_tab_scroll_area.setObjectName("champs_tab_scroll_area")
         self.champs_tab_scroll_area_widget_contents = QtWidgets.QWidget()
-        self.champs_tab_scroll_area_widget_contents.setGeometry(QtCore.QRect(0, 0, 933, 571))
+        self.champs_tab_scroll_area_widget_contents.setGeometry(QtCore.QRect(0, 0, 929, 571))
         self.champs_tab_scroll_area_widget_contents.setObjectName("champs_tab_scroll_area_widget_contents")
         self.champs_tab_scroll_area.setWidget(self.champs_tab_scroll_area_widget_contents)
         self.champs_tab_grid_layout.addWidget(self.champs_tab_scroll_area, 0, 0, 1, 1)

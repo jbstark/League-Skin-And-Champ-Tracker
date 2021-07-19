@@ -81,6 +81,8 @@ class SidebarInfoWidget(QtWidgets.QStackedWidget):
         
 
 class IconWidget(QtWidgets.QFrame):
+    clicked = QtCore.pyqtSignal(str, int)
+    
     def __init__(self, name="", api_call_path="", cost=0, client=None, width=200, height=250, parent=None, *args,
                  **kwargs):
         super().__init__(parent=parent, *args, **kwargs)
@@ -155,6 +157,12 @@ class IconWidget(QtWidgets.QFrame):
         # self.name_label.setText(
         #    _translate("icon_frame", self.name_label.fontMetrics().elidedText(name, QtCore.Qt.ElideRight, 110)))
         QtCore.QMetaObject.connectSlotsByName(self)
+
+    def mouseReleaseEvent(self, a0: QtGui.QMouseEvent) -> None:
+        import re
+        cost = self.cost_label.text()
+        cost = re.sub("[^0-9]", "", cost)
+        self.clicked.emit(self.name_label.text(), int(cost))
 
     def enterEvent(self, a0: QtCore.QEvent) -> None:
         self.setFrameShape(QtWidgets.QFrame.Box)
@@ -246,6 +254,9 @@ class SettingsWidget(QtWidgets.QWidget):
 
 class ShoppingCart(QtWidgets.QWidget):
     class CartItem(QtWidgets.QWidget):
+        delete = QtCore.pyqtSignal(str)
+        amount_changed = QtCore.pyqtSignal(str)
+        
         def __init__(self, item_name, cost, parent=None):
             super().__init__(parent=parent)
             
@@ -256,15 +267,17 @@ class ShoppingCart(QtWidgets.QWidget):
             self.cost = cost
             self.quantity = 1
             
+            self.ui.item_label.setText(f"{self.name} ({self.cost} tokens)")
+            
             self.ui.item_quantity_spinBox.valueChanged.connect(self.update_quantity)
+            self.ui.remove_item_button.clicked.connect(self.remove_item)
             
         def update_quantity(self):
             self.quantity = self.ui.item_quantity_spinBox.value()
+            self.amount_changed.emit(self.name)
         
-        def remove_item(self):
-            if self.parent() is not None:
-                self.parent().layout().removeWidget(self)
-                self.deleteLater()
+        def remove_item(self, name):
+            self.delete.emit(self.name)
         
         def total_cost(self):
             return self.cost * self.quantity
@@ -275,18 +288,39 @@ class ShoppingCart(QtWidgets.QWidget):
         self.ui = Ui_shopping_cart_widget()
         self.ui.setupUi(self)
         
-        self.items = []
+        self.items = dict()
         self.cart_total = 0
         
         self.ui.shopping_cart_scrollAreaWidgetContents_verticalLayout.setAlignment(QtCore.Qt.AlignTop)
         
     def add_item(self, item_name, item_cost):
         new_item = ShoppingCart.CartItem(item_name, item_cost, parent=self.ui.shopping_cart_scrollAreaWidgetContents)
+        new_item.delete.connect(self.delete_item)
+        new_item.amount_changed.connect(self.refresh_cart_total)
         self.ui.shopping_cart_scrollAreaWidgetContents_verticalLayout.addWidget(new_item)
-        self.items.append(new_item)
+        self.items[item_name] = new_item
+
+        self.update_cost(new_item.total_cost())
         
-        self.cart_total += new_item.total_cost()
+    def delete_item(self, item_name):
+        item = self.items.pop(item_name)
+        self.ui.shopping_cart_scrollAreaWidgetContents_verticalLayout.removeWidget(item)
+        self.update_cost(-item.total_cost())
+        item.deleteLater()
         
+    def contains(self, name):
+        return name in self.items.keys()
+    
+    def update_cost(self, delta):
+        self.cart_total += delta
+        self.ui.cart_total_label.setText(f"Total cost: {self.cart_total}")
+        
+    def refresh_cart_total(self, item_name):
+        total = 0
+        for item in self.items.values():
+            total += item.total_cost()
+        self.cart_total = total
+        self.ui.cart_total_label.setText(f"Total cost: {self.cart_total}")
         
 class TrackerWindow(QtWidgets.QMainWindow):
     
@@ -307,12 +341,12 @@ class TrackerWindow(QtWidgets.QMainWindow):
             create_client_refresh_messageBox(True, self.ui.centralwidget).exec_()
             self.client.check_client_running()
     
-        #self.setup_champs_tab_layout()
         self.setup_current_event_tab_layout()
 
         self.config_event_tabs()
     
         self.sidebar_info_widget = None
+        self.current_event_shop_items = []
     
         self.ui.tab_widget.currentChanged.connect(self.new_tab_selected)
         self.ui.left_panel_frame_vertical_layout.addWidget(SettingsWidget(client=self.client,
@@ -375,9 +409,11 @@ class TrackerWindow(QtWidgets.QMainWindow):
                 cost = "Owned"
             elif item[2] == 0:
                 cost = "Unknown"
-            self.ui.current_event_tab_scroll_area_widget_contents_layout.addWidget(
-                IconWidget(
-                    item[0], item[1], cost, self.client, parent=self.ui.current_event_tab_scroll_area_widget_contents))
+            icon_widget = IconWidget(
+                    item[0], item[1], cost, self.client, parent=self.ui.current_event_tab_scroll_area_widget_contents)
+            self.current_event_shop_items.append(icon_widget)
+            icon_widget.clicked.connect(self.icon_widget_clicked)
+            self.ui.current_event_tab_scroll_area_widget_contents_layout.addWidget(icon_widget)
             
     def populate_previous_event_tab(self):
         """Adds all purchasable item widgets to the current event tab."""
@@ -413,6 +449,10 @@ class TrackerWindow(QtWidgets.QMainWindow):
         self.ui.current_event_tab_scroll_area_widget_contents_layout.setObjectName(
             "previous_event_tab_scroll_area_widget_contents_layout")
 
+    def icon_widget_clicked(self, name, cost):
+        if not self.shopping_cart.contains(name):
+            self.shopping_cart.add_item(name, cost)
+        
 
 if __name__ == "__main__":
     import sys

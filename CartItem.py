@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'ui\CartItem.ui'
+# Form implementation generated from reading ui file 'ui/CartItem.ui'
 #
 # Created by: PyQt5 UI code generator 5.15.4
 #
@@ -14,7 +14,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_CartItem(object):
     def setupUi(self, CartItem):
         CartItem.setObjectName("CartItem")
-        CartItem.resize(401, 75)
+        CartItem.resize(235, 75)
         self.horizontalLayout = QtWidgets.QHBoxLayout(CartItem)
         self.horizontalLayout.setObjectName("horizontalLayout")
         self.remove_item_button = QtWidgets.QPushButton(CartItem)
@@ -31,7 +31,7 @@ class Ui_CartItem(object):
         self.remove_item_button.setObjectName("remove_item_button")
         self.horizontalLayout.addWidget(self.remove_item_button)
         self.item_label = QtWidgets.QLabel(CartItem)
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.MinimumExpanding, QtWidgets.QSizePolicy.Preferred)
+        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Preferred)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.item_label.sizePolicy().hasHeightForWidth())
@@ -39,6 +39,11 @@ class Ui_CartItem(object):
         self.item_label.setObjectName("item_label")
         self.horizontalLayout.addWidget(self.item_label)
         self.item_quantity_spinBox = QtWidgets.QSpinBox(CartItem)
+        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Maximum, QtWidgets.QSizePolicy.Fixed)
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(self.item_quantity_spinBox.sizePolicy().hasHeightForWidth())
+        self.item_quantity_spinBox.setSizePolicy(sizePolicy)
         self.item_quantity_spinBox.setMinimumSize(QtCore.QSize(50, 0))
         self.item_quantity_spinBox.setSuffix("")
         self.item_quantity_spinBox.setPrefix("")
