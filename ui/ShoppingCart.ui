@@ -16,6 +16,12 @@
   <layout class="QGridLayout" name="shopping_cart_widget_layout">
    <item row="0" column="0">
     <widget class="QScrollArea" name="shopping_cart_widget_scrollArea">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
      <property name="horizontalScrollBarPolicy">
       <enum>Qt::ScrollBarAlwaysOff</enum>
      </property>
