@@ -943,11 +943,18 @@ class Client:
             image_path = item['imagePath']
             # If there is no image path then it is a skin
             if image_path == '':
-                skin_id = item["outputs"][0]["lootName"]
-                skin_id = ''.join(i for i in skin_id if i.isdigit())
-                champ_id = skin_id[0:2]
-                # Make the image_path
-                image_path = f"/lol-game-data/assets/v1/champion-tiles/{champ_id}/{skin_id}.jpg"
+                skin_id = ''.join(i for i in item["outputs"][0]["lootName"] if i.isdigit())
+
+                # Champions can have different Id lengths. Find correct ID
+                for i in range(1, 5):
+                    champ_id = skin_id[0:i]
+                    skin = self.call_api(f"/lol-champions/v1/inventories/" +
+                                         f"{self.summonerId}/champions/{champ_id}/skins/{skin_id}")
+                    try:
+                        image_path = skin['tilePath']
+                        break
+                    except KeyError:
+                        pass
 
             # See if loot is owned
             owned = False
@@ -985,6 +992,7 @@ class Client:
             end_time = datetime.utcfromtimestamp(
                 self.con.execute("SELECT tokenEndDate FROM Player").fetchone()[0] // 1000)
             days_left = (end_time - datetime.utcnow()).total_seconds() / 86400
+
         except TypeError:
             self.logger.info(f"Tried to get tokens per day for {target}, but there is no stored date in the db")
             return "Event not running"
@@ -1000,14 +1008,16 @@ class Client:
         # Check if pass is bought:
         self.logger.info(f"Checking if the pass is owned")
 
+        # Check shop (pass not yet bought)
         if not self.con.execute("SELECT passOwned FROM Player").fetchone()[0]:
-            self.logger.debug(f"Pass owned status not stored")
+            self.logger.debug(f"Pass owned status not stored or stored as 0")
             pass_owned = False
+
             store = self.call_api("/lol-store/v1/featured")
             for item in store["catalog"]:
                 if item['inventoryType'] == "BUNDLES":
                     for loot in item['bundleItems']:
-                        if loot["name"].find("Pass") != -1:
+                        if loot["name"].find("Pass") != -1 and loot["name"].find("TFT") == -1:
                             try:
                                 if loot["owned"]:
                                     self.logger.debug(f"Found out that the pass is owned")
@@ -1018,6 +1028,8 @@ class Client:
                                 return "Pass not owned"
             if not pass_owned:
                 return "Pass not owned"
+        else:
+            self.logger.debug(f"Pass is owned and was stored")
 
         total_tokens = self.get_current_tokens(False)
 
@@ -1042,7 +1054,6 @@ class Client:
 
         missions = self.get_event_missions()
         mission: dict
-
         for mission in missions:
             if mission["completedDate"] != -1:
                 if mission["title"] != "Pass Token Bank Missions":
